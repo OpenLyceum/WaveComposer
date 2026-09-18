@@ -1,15 +1,15 @@
 /**
  * AnalyzerReadoutPanel.ts
  *
- * Numeric measurement readouts: a voiced/unvoiced indicator, pitch (F0) + musical
- * note with cents deviation, the four formant frequencies, HNR and CPP voice-
- * quality metrics, and an input-level meter. Each value binds to a model Property
- * via a DerivedProperty so it updates live; the panel itself holds no DSP state.
+ * Numeric measurement readouts for the music-analysis screen: pitch (F0), the
+ * musical note it lands on with its cents deviation, and an input-level meter.
+ * Each value binds to a model Property via a DerivedProperty so it updates live;
+ * the panel itself holds no DSP state. Voice measurements (formants, HNR, CPP)
+ * belong to the Voice & Vowels screen.
  */
 
 import { DerivedProperty, type TReadOnlyProperty } from "scenerystack/axon";
-import { toFixed } from "scenerystack/dot";
-import { Circle, type Color, GridBox, HBox, Node, Rectangle, Text, VBox } from "scenerystack/scenery";
+import { GridBox, HBox, Node, Rectangle, Text, VBox } from "scenerystack/scenery";
 import { Panel } from "scenerystack/sun";
 import { StringManager } from "../../i18n/StringManager.js";
 import WaveComposerColors from "../../WaveComposerColors.js";
@@ -26,44 +26,19 @@ export class AnalyzerReadoutPanel extends Panel {
     const readout = StringManager.getInstance().getReadoutStrings();
     const panelStrings = StringManager.getInstance().getPanelStrings();
 
-    // ── Voiced / unvoiced indicator ──────────────────────────────────────────
-    const voicedFill = new DerivedProperty(
-      [model.isVoicedProperty, WaveComposerColors.voicedColorProperty, WaveComposerColors.unvoicedColorProperty],
-      (voiced, on, off): Color => (voiced ? on : off),
-    );
-    const voicedText = new DerivedProperty(
-      [model.isVoicedProperty, readout.voicedStringProperty, readout.unvoicedStringProperty],
-      (voiced, on, off) => (voiced ? on : off),
-    );
-    const indicator = new HBox({
-      spacing: 6,
-      children: [
-        new Circle(6, { fill: voicedFill }),
-        new Text(voicedText, { font: WaveComposerConstants.LABEL_FONT, fill: WaveComposerColors.textColorProperty }),
-      ],
-    });
-
     // ── Numeric rows ──────────────────────────────────────────────────────────
     const hz = (n: number): string => (n > 0 ? `${Math.round(n)} Hz` : EMPTY);
-    const db = (n: number, valid: boolean): string => (valid ? `${toFixed(n, 1)} dB` : EMPTY);
 
     const pitchValue = new DerivedProperty([model.f0Property], hz);
+    // A note name only means something once a pitch was actually found.
     const noteValue = new DerivedProperty(
-      [model.isVoicedProperty, model.noteNameProperty, model.centsProperty],
-      (voiced, note, cents) => (voiced && note ? `${note} ${cents >= 0 ? "+" : ""}${cents}¢` : EMPTY),
+      [model.f0Property, model.noteNameProperty, model.centsProperty],
+      (f0, note, cents) => (f0 > 0 && note ? `${note} ${cents >= 0 ? "+" : ""}${cents}¢` : EMPTY),
     );
-    const hnrValue = new DerivedProperty([model.hnrProperty, model.isVoicedProperty], (v, voiced) => db(v, voiced));
-    const cppValue = new DerivedProperty([model.cppProperty, model.isVoicedProperty], (v, voiced) => db(v, voiced));
 
     const rows: Node[][] = [
       [label(readout.pitchStringProperty), value(pitchValue)],
       [label(readout.noteStringProperty), value(noteValue)],
-      [label(readout.formant1StringProperty), value(new DerivedProperty([model.f1FrequencyProperty], hz))],
-      [label(readout.formant2StringProperty), value(new DerivedProperty([model.f2FrequencyProperty], hz))],
-      [label(readout.formant3StringProperty), value(new DerivedProperty([model.f3FrequencyProperty], hz))],
-      [label(readout.formant4StringProperty), value(new DerivedProperty([model.f4FrequencyProperty], hz))],
-      [label(readout.hnrStringProperty), value(hnrValue)],
-      [label(readout.cppStringProperty), value(cppValue)],
     ];
     const grid = new GridBox({ rows, xSpacing: 16, ySpacing: 5, xAlign: "left" });
 
@@ -100,7 +75,6 @@ export class AnalyzerReadoutPanel extends Panel {
           font: WaveComposerConstants.PANEL_TITLE_FONT,
           fill: WaveComposerColors.textColorProperty,
         }),
-        indicator,
         grid,
         levelMeter,
       ],

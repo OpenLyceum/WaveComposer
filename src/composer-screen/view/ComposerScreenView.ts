@@ -9,7 +9,6 @@ import { type EmptySelfOptions, optionize } from "scenerystack/phet-core";
 import { VBox } from "scenerystack/scenery";
 import type { ScreenViewOptions } from "scenerystack/sim";
 import { SpectrumNode } from "../../analyzer-screen/view/SpectrumNode.js";
-import { StandingWaveNode } from "../../analyzer-screen/view/StandingWaveNode.js";
 import { WaveformNode } from "../../analyzer-screen/view/WaveformNode.js";
 import { BaseAnalysisScreenView } from "../../common/view/BaseAnalysisScreenView.js";
 import { WaveComposerScreenSummaryContent } from "../../common/view/WaveComposerScreenSummaryContent.js";
@@ -21,6 +20,7 @@ import { ComposePanelNode } from "./ComposePanelNode.js";
 import { ComposerControlPanel } from "./ComposerControlPanel.js";
 import { ComposerReadoutPanel } from "./ComposerReadoutPanel.js";
 import type { ComposerViewProperties } from "./ComposerViewProperties.js";
+import { StandingWaveNode } from "./StandingWaveNode.js";
 
 const MARGIN = WaveComposerConstants.SCREEN_MARGIN;
 const SPACING = WaveComposerConstants.SPACING;

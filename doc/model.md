@@ -17,8 +17,11 @@ different pedagogical views:
 
 - **Composer** — the signal is *synthesized* from user-chosen sinusoids, beats, harmonic stacks, and
   standing-wave modes so students hear and see how partials build a complex tone.
-- **Analyzer** — live **spectrogram** (frequency vs. time), instantaneous **spectrum** with an **LPC
-  spectral envelope**, and time-domain **waveform**.
+- **Analyzer** — live **spectrogram** (frequency vs. time), instantaneous **spectrum** with optional
+  harmonic / allowed-harmonic overlays, and time-domain **waveform**. Aimed at listening to music and
+  instruments: the frequency axes read either linearly in Hz or logarithmically (one octave per equal
+  step), and the spectrogram's scroll speed is adjustable. Voice measurements live on the Voice &
+  Vowels screen.
 - **Voice & Vowels** — **F1×F2 vowel plot**, **cepstrum**, source–filter diagram, and voice-quality
   readouts from the same analysis.
 
@@ -61,7 +64,9 @@ X[k] = FFT{ w[n] · x[n] }
 P[k] = 20 log₁₀ |X[k]|
 ```
 
-The spectrogram stacks successive P[k] over time with a user-selected colormap.
+The spectrogram stacks successive P[k] over time with a user-selected colormap. Each analyzed frame
+advances the display by the chosen **scroll speed** in columns, and rows map to frequency either
+linearly or by octave, depending on the selected frequency scale.
 
 **Pitch (YIN).** The **YIN** autocorrelation-difference algorithm estimates f₀ and a confidence score;
 a frame is **voiced** when confidence exceeds ~0.5 and f₀ > 0.

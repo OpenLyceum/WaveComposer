@@ -10,7 +10,9 @@ Upstream audio/spectrogram references live under `../Baseline/WaveComposer/` (Op
 VoceVista-style real-time **voice-analysis** simulation with three screens. Each screen has an isolated model extending `BaseAnalysisModel` (own audio source + DSP pipeline):
 
 - **Composer** (`src/composer-screen/`) — superpose sinusoids, beats, harmonics, standing-wave modes
-- **Analyzer** (`src/analyzer-screen/`) — spectrogram, spectrum + LPC envelope, waveform
+- **Analyzer** (`src/analyzer-screen/`) — music/instrument listening: spectrogram (adjustable scroll
+  speed), spectrum with harmonic / allowed-harmonic overlays, waveform; linear or logarithmic
+  frequency axes. Voice-specific displays belong on Voice & Vowels, not here.
 - **Voice & Vowels** (`src/voice-screen/`) — F1×F2 vowel plot, cepstrum, voice-quality readout
 
 Audio defaults to **microphone** but starts lazily on the Start button (no permission prompt on load). Permission-free **presets** use `AudioFileFrameSource` / `PresetFrameSource`. Attributions in `CREDITS.md`.

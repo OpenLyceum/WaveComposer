@@ -34,10 +34,11 @@
     "window": "Ventana",
     "maxFrequency": "Frecuencia máxima",
     "colormap": "Mapa de colores",
+    "frequencyScale": "Escala de frecuencia",
+    "linearScale": "Lineal",
+    "logScale": "Logarítmica",
+    "scrollSpeed": "Velocidad de desplazamiento",
     "overlays": "Superposiciones",
-    "showF0": "Trazado de F0",
-    "showFormants": "Trazados de formantes",
-    "showLpcEnvelope": "Envolvente LPC",
     "showHarmonics": "Marcadores armónicos",
     "showPipeOverlay": "Armónicos permitidos",
     "showModeNumbers": "Números de modo (n)",
@@ -75,7 +76,6 @@
     "standingWave": "Onda estacionaria",
     "modeLabel": "n = {{n}}",
     "resonance": "Resonancia",
-    "resonanceCaption": "Picos LPC = resonancias",
     "sourceFilter": "Modelo fuente-filtro",
     "glottalSource": "Fuente glótica",
     "vocalTract": "Filtro del tracto vocal",
@@ -186,7 +186,6 @@
     "formant1": "F1",
     "formant2": "F2",
     "formant3": "F3",
-    "formant4": "F4",
     "hnr": "HNR",
     "cpp": "CPP",
     "level": "Nivel",
@@ -220,8 +219,8 @@
     },
     "analyzer": {
       "screenSummary": {
-        "playArea": "El área de juego muestra un sonido analizado en sus componentes de frecuencia, mostrado como espectrograma, espectro con una envolvente espectral y forma de onda.",
-        "controlArea": "Los controles eligen la fuente de sonido y los preajustes, ajustan el rango de frecuencias y la ventana de análisis, y congelan o ejecutan la visualización. Un botón Restablecer todo devuelve la simulación a su estado inicial.",
+        "playArea": "El área de juego muestra un sonido analizado en sus componentes de frecuencia, mostrado como espectrograma, espectro con marcadores armónicos y forma de onda.",
+        "controlArea": "Los controles eligen la fuente de sonido y los preajustes, ajustan el rango de frecuencias, la escala de frecuencia y la velocidad de desplazamiento del espectrograma, y congelan o ejecutan la visualización. Un botón Restablecer todo devuelve la simulación a su estado inicial.",
         "interactionHint": "Elige una fuente de sonido y observa cómo su contenido de frecuencia aparece en el espectrograma y el espectro."
       },
       "currentDetails": "Elige una fuente de sonido y observa su espectrograma, espectro y forma de onda."

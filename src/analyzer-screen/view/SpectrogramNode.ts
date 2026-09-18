@@ -2,24 +2,31 @@
  * SpectrogramNode.ts
  *
  * Scrolling waterfall display (time × frequency × intensity). A ChartFrame
- * supplies the frequency (y) axis and labels; the intensity raster and the
- * F0/formant track overlays are drawn by an inner Canvas-2D node.
+ * supplies the frequency (y) axis and labels; the intensity raster is drawn by an
+ * inner Canvas-2D node.
  *
  * The raster is kept in an offscreen canvas used as a ring buffer: each analyzed
  * frame writes one vertical column (frequency bins → colormap), advancing a write
  * index. `paintCanvas` blits the ring in two slices so the newest column is always
  * at the right edge and older data scrolls left — no per-frame self-copy.
  *
- * Overlays (F0 and F1–F4) keep their own rolling history aligned with the same
- * ring index, drawn as polylines over the raster and gated by the view's
- * overlay-visibility Properties.
+ * The scroll speed sets how many columns a frame advances, so the same history
+ * can be stretched out for a slow look or hurried past for a fast one. Rows map
+ * to frequency through the selected {@link FrequencyScale}: evenly spaced in Hz,
+ * or one octave per equal slice of height.
  */
-import type { ChartTransform } from "scenerystack/bamboo";
 import { Bounds2, Range } from "scenerystack/dot";
 import { type EmptySelfOptions, optionize } from "scenerystack/phet-core";
-import { CanvasNode, type CanvasNodeOptions, Node } from "scenerystack/scenery";
+import { CanvasNode, type CanvasNodeOptions, Node, Text } from "scenerystack/scenery";
 import { ChartFrame } from "../../common/view/ChartFrame.js";
 import { getColormapLut } from "../../common/view/Colormaps.js";
+import {
+  formatScaleTick,
+  fromScaleCoordinate,
+  scaleRangeFor,
+  tickSpacingFor,
+} from "../../common/view/FrequencyScale.js";
+import { StringManager } from "../../i18n/StringManager.js";
 import WaveComposerColors from "../../WaveComposerColors.js";
 import { WaveComposerConstants } from "../../WaveComposerConstants.js";
 import type { AnalyzerModel } from "../model/AnalyzerModel.js";
@@ -30,40 +37,50 @@ interface SpectrogramNodeOptions {
   viewHeight: number;
 }
 
-const FREQUENCY_TICK_SPACING_HZ = 1000;
-
 export class SpectrogramNode extends Node {
   private readonly raster: SpectrogramRaster;
-  private readonly chartTransform: ChartTransform;
 
   public constructor(model: AnalyzerModel, viewProperties: AnalyzerViewProperties, options: SpectrogramNodeOptions) {
     super();
     const { viewWidth, viewHeight } = options;
+    const axisStrings = StringManager.getInstance().getAxisStrings();
 
+    const scaleRange = () =>
+      scaleRangeFor(
+        model.minFrequencyProperty.value,
+        model.maxFrequencyProperty.value,
+        viewProperties.frequencyScaleProperty.value,
+      );
+    const createTickLabel = (value: number) =>
+      new Text(formatScaleTick(value, viewProperties.frequencyScaleProperty.value), {
+        font: WaveComposerConstants.TICK_FONT,
+        fill: WaveComposerColors.textColorProperty,
+      });
+
+    const [yMin, yMax] = scaleRange();
     const frame = new ChartFrame({
       viewWidth,
       viewHeight,
       xRange: new Range(0, 1),
-      yRange: new Range(model.minFrequencyProperty.value, Math.max(model.maxFrequencyProperty.value, 1)),
-      ySpacing: FREQUENCY_TICK_SPACING_HZ,
-      yLabel: "Frequency (Hz)",
+      yRange: new Range(yMin, yMax),
+      ySpacing: tickSpacingFor(viewProperties.frequencyScaleProperty.value),
+      yLabel: axisStrings.frequencyStringProperty,
+      createYTickLabel: createTickLabel,
     });
-    this.chartTransform = frame.chartTransform;
-
     this.raster = new SpectrogramRaster(model, viewProperties, viewWidth, viewHeight);
     frame.plotLayer.addChild(this.raster);
     this.addChild(frame);
 
-    // Keep the frequency axis in sync with the analysis display range; the raster
-    // mapping changes too, so clear the history to avoid mixing scales.
+    // Keep the frequency axis in sync with the analysis display range and scale;
+    // the raster mapping changes too, so clear the history to avoid mixing scales.
     const retarget = () => {
-      this.chartTransform.setModelYRange(
-        new Range(model.minFrequencyProperty.value, Math.max(model.maxFrequencyProperty.value, 1)),
-      );
+      const [min, max] = scaleRange();
+      frame.setYAxis(new Range(min, max), tickSpacingFor(viewProperties.frequencyScaleProperty.value), createTickLabel);
       this.raster.clear();
     };
     model.minFrequencyProperty.lazyLink(retarget);
     model.maxFrequencyProperty.lazyLink(retarget);
+    viewProperties.frequencyScaleProperty.lazyLink(retarget);
   }
 
   public reset(): void {
@@ -71,7 +88,7 @@ export class SpectrogramNode extends Node {
   }
 }
 
-/** Canvas-2D scrolling raster + F0/formant overlays. */
+/** Canvas-2D scrolling raster. */
 class SpectrogramRaster extends CanvasNode {
   private readonly model: AnalyzerModel;
   private readonly viewProperties: AnalyzerViewProperties;
@@ -83,8 +100,11 @@ class SpectrogramRaster extends CanvasNode {
   private readonly offContext: CanvasRenderingContext2D;
   private readonly columnImage: ImageData;
   private writeIndex = 0;
-  private readonly f0History: Float32Array;
-  private readonly formantHistory: Float32Array[];
+  /**
+   * Fractional columns owed to the display. A speed below 1× writes a column only
+   * every few frames, so the remainder has to carry over instead of rounding away.
+   */
+  private columnCredit = 0;
 
   public constructor(
     model: AnalyzerModel,
@@ -112,14 +132,6 @@ class SpectrogramRaster extends CanvasNode {
     this.offContext = offscreen.getContext("2d") as CanvasRenderingContext2D;
     this.columnImage = this.offContext.createImageData(1, this.rows);
 
-    this.f0History = new Float32Array(this.cols);
-    this.formantHistory = [
-      new Float32Array(this.cols),
-      new Float32Array(this.cols),
-      new Float32Array(this.cols),
-      new Float32Array(this.cols),
-    ];
-
     this.clear();
 
     model.frameProcessedEmitter.addListener(() => this.pushFrame());
@@ -129,19 +141,14 @@ class SpectrogramRaster extends CanvasNode {
     // The ring buffer bakes in the background color, so a theme change (e.g.
     // projector mode) must repaint the history or stale-colored columns linger.
     WaveComposerColors.chartBackgroundColorProperty.lazyLink(() => this.clear());
-    viewProperties.showF0TrackProperty.lazyLink(() => this.invalidatePaint());
-    viewProperties.showFormantTracksProperty.lazyLink(() => this.invalidatePaint());
   }
 
   /** Resets the scrolling history to the background color. */
   public clear(): void {
     this.offContext.fillStyle = WaveComposerColors.chartBackgroundColorProperty.value.toCSS();
     this.offContext.fillRect(0, 0, this.cols, this.rows);
-    this.f0History.fill(0);
-    for (const history of this.formantHistory) {
-      history.fill(0);
-    }
     this.writeIndex = 0;
+    this.columnCredit = 0;
     this.invalidatePaint();
   }
 
@@ -150,11 +157,23 @@ class SpectrogramRaster extends CanvasNode {
     if (!analysis) {
       return;
     }
+    // Fractional speeds mean some frames draw nothing and fast ones draw several.
+    this.columnCredit += this.viewProperties.scrollSpeedProperty.value;
+    const columnCount = Math.min(Math.floor(this.columnCredit), this.cols);
+    if (columnCount < 1) {
+      return;
+    }
+    this.columnCredit -= columnCount;
+
     const sampleRate = this.model.sampleRateProperty.value;
     const half = analysis.powerSpectrumDb.length;
     const fftSize = half * 2;
-    const minF = this.model.minFrequencyProperty.value;
-    const maxF = Math.max(this.model.maxFrequencyProperty.value, minF + 1);
+    const scale = this.viewProperties.frequencyScaleProperty.value;
+    const [yMin, yMax] = scaleRangeFor(
+      this.model.minFrequencyProperty.value,
+      this.model.maxFrequencyProperty.value,
+      scale,
+    );
     const lut = getColormapLut(this.viewProperties.colormapProperty.value);
     const data = this.columnImage.data;
     const dbSpan = WaveComposerConstants.SPECTROGRAM_MAX_DB - WaveComposerConstants.SPECTROGRAM_MIN_DB;
@@ -162,7 +181,7 @@ class SpectrogramRaster extends CanvasNode {
     for (let r = 0; r < this.rows; r++) {
       // Row 0 is the top of the display = highest frequency.
       const frac = this.rows > 1 ? 1 - r / (this.rows - 1) : 0;
-      const freq = minF + frac * (maxF - minF);
+      const freq = fromScaleCoordinate(yMin + frac * (yMax - yMin), scale);
       let bin = Math.round((freq * fftSize) / sampleRate);
       if (bin < 0) {
         bin = 0;
@@ -179,17 +198,10 @@ class SpectrogramRaster extends CanvasNode {
       data[o + 2] = lut[lutIndex + 2] ?? 0;
       data[o + 3] = 255;
     }
-    this.offContext.putImageData(this.columnImage, this.writeIndex, 0);
-
-    this.f0History[this.writeIndex] = this.model.f0Property.value;
-    const formants = this.model.formantsProperty.value;
-    for (let f = 0; f < this.formantHistory.length; f++) {
-      const history = this.formantHistory[f];
-      if (history) {
-        history[this.writeIndex] = formants[f]?.frequencyHz ?? 0;
-      }
+    for (let c = 0; c < columnCount; c++) {
+      this.offContext.putImageData(this.columnImage, this.writeIndex, 0);
+      this.writeIndex = (this.writeIndex + 1) % this.cols;
     }
-    this.writeIndex = (this.writeIndex + 1) % this.cols;
     this.invalidatePaint();
   }
 
@@ -206,72 +218,5 @@ class SpectrogramRaster extends CanvasNode {
     if (wi > 0) {
       context.drawImage(this.offscreen, 0, 0, wi, this.rows, leftCount * scaleX, 0, wi * scaleX, this.viewHeight);
     }
-
-    this.paintTracks(context, scaleX);
-  }
-
-  private paintTracks(context: CanvasRenderingContext2D, scaleX: number): void {
-    const minF = this.model.minFrequencyProperty.value;
-    const maxF = Math.max(this.model.maxFrequencyProperty.value, minF + 1);
-
-    if (this.viewProperties.showF0TrackProperty.value) {
-      this.paintTrack(
-        context,
-        this.f0History,
-        WaveComposerColors.f0TrackColorProperty.value.toCSS(),
-        2,
-        scaleX,
-        minF,
-        maxF,
-      );
-    }
-    if (this.viewProperties.showFormantTracksProperty.value) {
-      const colors = [
-        WaveComposerColors.formant1ColorProperty,
-        WaveComposerColors.formant2ColorProperty,
-        WaveComposerColors.formant3ColorProperty,
-        WaveComposerColors.formant4ColorProperty,
-      ];
-      for (let f = 0; f < this.formantHistory.length; f++) {
-        const history = this.formantHistory[f];
-        const color = colors[f];
-        if (history && color) {
-          this.paintTrack(context, history, color.value.toCSS(), 1.5, scaleX, minF, maxF);
-        }
-      }
-    }
-  }
-
-  private paintTrack(
-    context: CanvasRenderingContext2D,
-    history: Float32Array,
-    css: string,
-    lineWidth: number,
-    scaleX: number,
-    minF: number,
-    maxF: number,
-  ): void {
-    context.strokeStyle = css;
-    context.lineWidth = lineWidth;
-    context.beginPath();
-    let penDown = false;
-    for (let p = 0; p < this.cols; p++) {
-      // p = 0 is the oldest column (left edge); matches the raster blit order.
-      const dataIndex = (this.writeIndex + p) % this.cols;
-      const freq = history[dataIndex] ?? 0;
-      if (freq > 0 && freq >= minF && freq <= maxF) {
-        const x = (p + 0.5) * scaleX;
-        const y = this.viewHeight * (1 - (freq - minF) / (maxF - minF));
-        if (penDown) {
-          context.lineTo(x, y);
-        } else {
-          context.moveTo(x, y);
-          penDown = true;
-        }
-      } else {
-        penDown = false;
-      }
-    }
-    context.stroke();
   }
 }

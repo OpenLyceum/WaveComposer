@@ -1,22 +1,31 @@
 /**
  * SpectrumNode.ts
  *
- * Instantaneous FFT power spectrum (magnitude in dB vs frequency) with the LPC
- * spectral-envelope curve overlaid, plus vertical markers at the detected formant
- * frequencies and optional integer-harmonic markers (multiples of F0).
+ * Instantaneous FFT power spectrum (magnitude in dB vs frequency), with optional
+ * integer-harmonic markers at multiples of the fundamental.
  *
  * Physics pedagogy overlays: allowed-harmonic bands for pipe/string boundary
- * models, mode-number labels on harmonic markers, and a resonance caption on the
- * LPC envelope.
+ * models and mode-number labels on the harmonic markers.
+ *
+ * The frequency axis plots a {@link FrequencyScale} coordinate rather than raw Hz,
+ * so the same chart serves a linear Hz axis and a per-octave logarithmic one.
  */
 import { CanvasLinePlot, ChartCanvasNode, type ChartTransform } from "scenerystack/bamboo";
 import { Range, Vector2 } from "scenerystack/dot";
 import { Shape } from "scenerystack/kite";
-import { Line, Node, Path, Rectangle, Text } from "scenerystack/scenery";
-import type { HarmonicChartModel } from "../../common/model/HarmonicChartModel.js";
+import { Node, Path, Rectangle, Text } from "scenerystack/scenery";
+import type { SpectrumChartModel } from "../../common/model/HarmonicChartModel.js";
 import { isModeAllowed, PipeBoundary } from "../../common/model/PipeBoundary.js";
 import { ChartFrame } from "../../common/view/ChartFrame.js";
 import type { ChartOverlayProperties } from "../../common/view/ChartOverlayProperties.js";
+import {
+  FrequencyScale,
+  formatScaleTick,
+  LOG_MIN_FREQUENCY_HZ,
+  scaleRangeFor,
+  tickSpacingFor,
+  toScaleCoordinate,
+} from "../../common/view/FrequencyScale.js";
 import { StringManager } from "../../i18n/StringManager.js";
 import WaveComposerColors from "../../WaveComposerColors.js";
 import { WaveComposerConstants } from "../../WaveComposerConstants.js";
@@ -26,46 +35,46 @@ interface SpectrumNodeOptions {
   viewHeight: number;
 }
 
-const FREQUENCY_TICK_SPACING_HZ = 1000;
 const DB_TICK_SPACING = 20;
 const HARMONIC_BAND_WIDTH_HZ = 18;
 /** Clear space (view px) required between consecutive mode-number labels. */
 const MODE_LABEL_MIN_GAP = 6;
 
 export class SpectrumNode extends Node {
-  private readonly model: HarmonicChartModel;
+  private readonly model: SpectrumChartModel;
   private readonly viewProperties: ChartOverlayProperties;
   private readonly viewWidth: number;
   private readonly viewHeight: number;
+  private readonly frame: ChartFrame;
   private readonly chartTransform: ChartTransform;
   private readonly spectrumPlot: CanvasLinePlot;
-  private readonly lpcPlot: CanvasLinePlot;
   private readonly chartCanvas: ChartCanvasNode;
-  private readonly formantLines: Line[];
   private readonly harmonicMarkers: Path;
   private readonly allowedHarmonicLayer: Node;
   private readonly modeNumberLayer: Node;
-  private readonly resonanceCaption: Text;
 
-  public constructor(model: HarmonicChartModel, viewProperties: ChartOverlayProperties, options: SpectrumNodeOptions) {
+  public constructor(model: SpectrumChartModel, viewProperties: ChartOverlayProperties, options: SpectrumNodeOptions) {
     super();
     this.model = model;
     this.viewProperties = viewProperties;
     this.viewWidth = options.viewWidth;
     this.viewHeight = options.viewHeight;
     const axisStrings = StringManager.getInstance().getAxisStrings();
-    const physics = StringManager.getInstance().getPhysicsStrings();
+    const scale = this.frequencyScale;
 
+    const [xMin, xMax] = scaleRangeFor(model.minFrequencyProperty.value, model.maxFrequencyProperty.value, scale);
     const frame = new ChartFrame({
       viewWidth: options.viewWidth,
       viewHeight: options.viewHeight,
-      xRange: new Range(model.minFrequencyProperty.value, Math.max(model.maxFrequencyProperty.value, 1)),
+      xRange: new Range(xMin, xMax),
       yRange: new Range(WaveComposerConstants.SPECTRUM_MIN_DB, WaveComposerConstants.SPECTRUM_MAX_DB),
-      xSpacing: FREQUENCY_TICK_SPACING_HZ,
+      xSpacing: tickSpacingFor(scale),
       ySpacing: DB_TICK_SPACING,
       xLabel: axisStrings.frequencyStringProperty,
       yLabel: axisStrings.magnitudeStringProperty,
+      createXTickLabel: (value) => this.createFrequencyTickLabel(value),
     });
+    this.frame = frame;
     this.chartTransform = frame.chartTransform;
 
     this.allowedHarmonicLayer = new Node();
@@ -75,11 +84,7 @@ export class SpectrumNode extends Node {
       stroke: WaveComposerColors.spectrumCurveColorProperty.value.toCSS(),
       lineWidth: 1.5,
     });
-    this.lpcPlot = new CanvasLinePlot(this.chartTransform, [], {
-      stroke: WaveComposerColors.lpcEnvelopeColorProperty.value.toCSS(),
-      lineWidth: 2,
-    });
-    this.chartCanvas = new ChartCanvasNode(this.chartTransform, [this.spectrumPlot, this.lpcPlot]);
+    this.chartCanvas = new ChartCanvasNode(this.chartTransform, [this.spectrumPlot]);
     frame.plotLayer.addChild(this.chartCanvas);
 
     this.harmonicMarkers = new Path(null, {
@@ -92,42 +97,10 @@ export class SpectrumNode extends Node {
     this.modeNumberLayer = new Node();
     frame.plotLayer.addChild(this.modeNumberLayer);
 
-    const formantColors = [
-      WaveComposerColors.formant1ColorProperty,
-      WaveComposerColors.formant2ColorProperty,
-      WaveComposerColors.formant3ColorProperty,
-      WaveComposerColors.formant4ColorProperty,
-    ];
-    const formantLayer = new Node();
-    this.formantLines = formantColors.map((colorProperty) => {
-      const line = new Line(0, 0, 0, options.viewHeight, { stroke: colorProperty, lineWidth: 1.5, visible: false });
-      formantLayer.addChild(line);
-      return line;
-    });
-    frame.plotLayer.addChild(formantLayer);
-
-    this.resonanceCaption = new Text(physics.resonanceCaptionStringProperty, {
-      font: WaveComposerConstants.LABEL_FONT,
-      fill: WaveComposerColors.lpcEnvelopeColorProperty,
-      right: options.viewWidth - 4,
-      top: 2,
-      visible: false,
-    });
-    frame.plotLayer.addChild(this.resonanceCaption);
-
     this.addChild(frame);
 
     WaveComposerColors.spectrumCurveColorProperty.lazyLink((color) => {
       this.spectrumPlot.setStroke(color.toCSS());
-      this.chartCanvas.update();
-    });
-    WaveComposerColors.lpcEnvelopeColorProperty.lazyLink((color) => {
-      this.lpcPlot.setStroke(color.toCSS());
-      this.chartCanvas.update();
-    });
-    viewProperties.showLpcEnvelopeProperty.link((visible) => {
-      this.lpcPlot.visible = visible;
-      this.resonanceCaption.visible = visible;
       this.chartCanvas.update();
     });
     viewProperties.showHarmonicsProperty.lazyLink(() => this.update());
@@ -136,15 +109,48 @@ export class SpectrumNode extends Node {
     model.pipeBoundaryProperty.lazyLink(() => this.update());
 
     const retarget = () => {
-      this.chartTransform.setModelXRange(
-        new Range(model.minFrequencyProperty.value, Math.max(model.maxFrequencyProperty.value, 1)),
+      const [min, max] = scaleRangeFor(
+        model.minFrequencyProperty.value,
+        model.maxFrequencyProperty.value,
+        this.frequencyScale,
+      );
+      this.frame.setXAxis(new Range(min, max), tickSpacingFor(this.frequencyScale), (value) =>
+        this.createFrequencyTickLabel(value),
       );
       this.update();
     };
     model.minFrequencyProperty.lazyLink(retarget);
     model.maxFrequencyProperty.lazyLink(retarget);
+    viewProperties.frequencyScaleProperty?.lazyLink(retarget);
 
     model.frameProcessedEmitter.addListener(() => this.update());
+  }
+
+  /** The active frequency scale; linear on screens that don't offer the choice. */
+  private get frequencyScale(): FrequencyScale {
+    return this.viewProperties.frequencyScaleProperty?.value ?? FrequencyScale.LINEAR;
+  }
+
+  /**
+   * Lowest frequency actually drawn. A logarithmic axis starts at
+   * {@link LOG_MIN_FREQUENCY_HZ}, so bins below it are left out rather than piled
+   * onto the left edge by the clamp in {@link toScaleCoordinate}.
+   */
+  private get displayMinFrequencyHz(): number {
+    const minF = this.model.minFrequencyProperty.value;
+    return this.frequencyScale === FrequencyScale.LOGARITHMIC ? Math.max(minF, LOG_MIN_FREQUENCY_HZ) : minF;
+  }
+
+  /** Hz → x in chart-model coordinates (Hz when linear, octaves when logarithmic). */
+  private toChartX(frequencyHz: number): number {
+    return toScaleCoordinate(frequencyHz, this.frequencyScale);
+  }
+
+  private createFrequencyTickLabel(value: number): Node {
+    return new Text(formatScaleTick(value, this.frequencyScale), {
+      font: WaveComposerConstants.TICK_FONT,
+      fill: WaveComposerColors.textColorProperty,
+    });
   }
 
   private update(): void {
@@ -155,42 +161,23 @@ export class SpectrumNode extends Node {
     const sampleRate = this.model.sampleRateProperty.value;
     const half = analysis.powerSpectrumDb.length;
     const fftSize = half * 2;
-    const minF = this.model.minFrequencyProperty.value;
+    const minF = this.displayMinFrequencyHz;
     const maxF = Math.max(this.model.maxFrequencyProperty.value, minF + 1);
     const binStart = Math.max(0, Math.floor((minF * fftSize) / sampleRate));
     const binEnd = Math.min(half - 1, Math.ceil((maxF * fftSize) / sampleRate));
 
     const spectrumData: Vector2[] = [];
-    const lpcData: Vector2[] = [];
     for (let bin = binStart; bin <= binEnd; bin++) {
       const freq = (bin * sampleRate) / fftSize;
-      spectrumData.push(new Vector2(freq, analysis.powerSpectrumDb[bin] ?? WaveComposerConstants.SPECTRUM_MIN_DB));
-      lpcData.push(new Vector2(freq, analysis.lpcEnvelopeDb[bin] ?? WaveComposerConstants.SPECTRUM_MIN_DB));
+      spectrumData.push(
+        new Vector2(this.toChartX(freq), analysis.powerSpectrumDb[bin] ?? WaveComposerConstants.SPECTRUM_MIN_DB),
+      );
     }
     this.spectrumPlot.setDataSet(spectrumData);
-    this.lpcPlot.setDataSet(lpcData);
     this.chartCanvas.update();
 
-    this.updateFormantLines(minF, maxF);
     this.updateHarmonicMarkers(minF, maxF);
     this.updateAllowedHarmonicBands(minF, maxF);
-  }
-
-  private updateFormantLines(minF: number, maxF: number): void {
-    const formants = this.model.formantsProperty.value;
-    for (let f = 0; f < this.formantLines.length; f++) {
-      const line = this.formantLines[f];
-      if (!line) {
-        continue;
-      }
-      const freq = formants[f]?.frequencyHz ?? 0;
-      if (freq >= minF && freq <= maxF) {
-        line.x = this.chartTransform.modelToViewX(freq);
-        line.visible = true;
-      } else {
-        line.visible = false;
-      }
-    }
   }
 
   private updateHarmonicMarkers(minF: number, maxF: number): void {
@@ -214,7 +201,7 @@ export class SpectrumNode extends Node {
     for (let freq = f0; freq <= maxF; freq += f0) {
       modeNumber += 1;
       if (freq >= minF) {
-        const x = this.chartTransform.modelToViewX(freq);
+        const x = this.chartTransform.modelToViewX(this.toChartX(freq));
         shape.moveTo(x, 0).lineTo(x, this.viewHeight);
         if (this.viewProperties.showModeNumbersProperty.value) {
           const label = new Text(modeLabelPattern.replace("{{n}}", `${modeNumber}`), {
@@ -253,8 +240,8 @@ export class SpectrumNode extends Node {
       if (freq < minF || !isModeAllowed(modeNumber, boundary)) {
         continue;
       }
-      const xLeft = this.chartTransform.modelToViewX(Math.max(minF, freq - HARMONIC_BAND_WIDTH_HZ / 2));
-      const xRight = this.chartTransform.modelToViewX(Math.min(maxF, freq + HARMONIC_BAND_WIDTH_HZ / 2));
+      const xLeft = this.chartTransform.modelToViewX(this.toChartX(Math.max(minF, freq - HARMONIC_BAND_WIDTH_HZ / 2)));
+      const xRight = this.chartTransform.modelToViewX(this.toChartX(Math.min(maxF, freq + HARMONIC_BAND_WIDTH_HZ / 2)));
       this.allowedHarmonicLayer.addChild(
         new Rectangle(xLeft, 0, xRight - xLeft, this.viewHeight, {
           fill: WaveComposerColors.allowedHarmonicBandColorProperty,

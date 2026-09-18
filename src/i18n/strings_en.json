@@ -34,10 +34,11 @@
     "window": "Window",
     "maxFrequency": "Max Frequency",
     "colormap": "Colormap",
+    "frequencyScale": "Frequency Scale",
+    "linearScale": "Linear",
+    "logScale": "Logarithmic",
+    "scrollSpeed": "Scroll Speed",
     "overlays": "Overlays",
-    "showF0": "F0 Track",
-    "showFormants": "Formant Tracks",
-    "showLpcEnvelope": "LPC Envelope",
     "showHarmonics": "Harmonic Markers",
     "showPipeOverlay": "Allowed Harmonics",
     "showModeNumbers": "Mode Numbers (n)",
@@ -75,7 +76,6 @@
     "standingWave": "Standing wave",
     "modeLabel": "n = {{n}}",
     "resonance": "Resonance",
-    "resonanceCaption": "LPC peaks = resonances",
     "sourceFilter": "Source–filter model",
     "glottalSource": "Glottal source",
     "vocalTract": "Vocal tract filter",
@@ -186,7 +186,6 @@
     "formant1": "F1",
     "formant2": "F2",
     "formant3": "F3",
-    "formant4": "F4",
     "hnr": "HNR",
     "cpp": "CPP",
     "level": "Level",
@@ -220,8 +219,8 @@
     },
     "analyzer": {
       "screenSummary": {
-        "playArea": "The play area shows a sound analyzed into its frequency components, displayed as a spectrogram, a spectrum with a spectral envelope, and a waveform.",
-        "controlArea": "The controls choose the sound source and presets, set the frequency range and analysis window, and freeze or run the display. A Reset All button returns the simulation to its starting state.",
+        "playArea": "The play area shows a sound analyzed into its frequency components, displayed as a spectrogram, a spectrum with harmonic markers, and a waveform.",
+        "controlArea": "The controls choose the sound source and presets, set the frequency range, the frequency scale, and the spectrogram scroll speed, and freeze or run the display. A Reset All button returns the simulation to its starting state.",
         "interactionHint": "Choose a sound source and watch how its frequency content appears in the spectrogram and spectrum."
       },
       "currentDetails": "Choose a sound source and observe its spectrogram, spectrum, and waveform."

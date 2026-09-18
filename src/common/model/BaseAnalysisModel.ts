@@ -115,6 +115,12 @@ export class BaseAnalysisModel implements TModel {
   /** When true, the active source is routed to the speakers. */
   public readonly isAudioEnabledProperty = new BooleanProperty(true);
   /**
+   * When true, analysis is paused so the current display can be inspected. Audio
+   * stops with it: a frozen display whose sound kept running would describe a
+   * moment that has already passed.
+   */
+  public readonly isFrozenProperty = new BooleanProperty(false);
+  /**
    * The global audio state: the navigation-bar sound button AND
    * Preferences > Audio > Sounds. Re-exported here so views can grey out their
    * audio controls without reaching for the joist singleton themselves.
@@ -130,6 +136,7 @@ export class BaseAnalysisModel implements TModel {
   public readonly isMonitoringProperty: TReadOnlyProperty<boolean> = DerivedProperty.and([
     this.isAudioEnabledProperty,
     this.isGlobalAudioEnabledProperty,
+    DerivedProperty.not(this.isFrozenProperty),
   ]);
   /** Sample rate (Hz) of the active source; the view needs it to map FFT bins to Hz. */
   public readonly sampleRateProperty = new NumberProperty(DEFAULT_SAMPLE_RATE_HZ);
@@ -492,6 +499,7 @@ export class BaseAnalysisModel implements TModel {
     this.sampleRateProperty.reset();
     this.maxFrequencyProperty.reset();
     this.isAudioEnabledProperty.reset();
+    this.isFrozenProperty.reset();
     this.audioNoticeProperty.reset();
     this.f0Property.reset();
     this.f0ConfidenceProperty.reset();
@@ -517,7 +525,7 @@ export class BaseAnalysisModel implements TModel {
    */
   public step(_dt: number): void {
     const source = this.source;
-    if (!source || this.isAnalysisPaused || !source.isActive) {
+    if (!source || this.isFrozenProperty.value || !source.isActive) {
       return;
     }
     if (!source.getFrame(this.frameBuffer)) {
@@ -535,11 +543,6 @@ export class BaseAnalysisModel implements TModel {
     this.formantsProperty.value = result.formants;
 
     this.frameProcessedEmitter.emit();
-  }
-
-  /** Screen subclasses can pause analysis without putting the control in every model. */
-  protected get isAnalysisPaused(): boolean {
-    return false;
   }
 
   /** Builds the analyzer config from the current settings + source sample rate. */
