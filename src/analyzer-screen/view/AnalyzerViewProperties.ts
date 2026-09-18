@@ -34,8 +34,6 @@ export class AnalyzerViewProperties {
   public readonly scrollSpeedProperty = new NumberProperty(DEFAULT_SCROLL_SPEED, { range: SCROLL_SPEED_RANGE });
   /** Show integer-harmonic markers (multiples of F0) over the spectrum. */
   public readonly showHarmonicsProperty = new BooleanProperty(false);
-  /** Shade allowed harmonics for the selected boundary model. */
-  public readonly showPipeOverlayProperty = new BooleanProperty(false);
   /** Label harmonic markers with standing-wave mode numbers (n = 1, 2, 3…). */
   public readonly showModeNumbersProperty = new BooleanProperty(false);
   /** Oscilloscope time window in milliseconds. */
@@ -48,7 +46,6 @@ export class AnalyzerViewProperties {
     this.frequencyScaleProperty.reset();
     this.scrollSpeedProperty.reset();
     this.showHarmonicsProperty.reset();
-    this.showPipeOverlayProperty.reset();
     this.showModeNumbersProperty.reset();
     this.timeWindowMsProperty.reset();
   }

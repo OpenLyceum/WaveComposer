@@ -8,7 +8,8 @@ import type { FrequencyScale } from "./FrequencyScale.js";
 
 export type ChartOverlayProperties = {
   readonly showHarmonicsProperty: BooleanProperty;
-  readonly showPipeOverlayProperty: BooleanProperty;
+  /** Allowed-harmonic shading; absent on screens that do not teach boundary models. */
+  readonly showPipeOverlayProperty?: BooleanProperty;
   readonly showModeNumbersProperty: BooleanProperty;
   readonly timeWindowMsProperty: NumberProperty;
   /** Frequency-axis scale; charts plot linearly when a screen does not offer the choice. */

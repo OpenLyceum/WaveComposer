@@ -14,18 +14,25 @@ export type StandingWaveMode = {
 };
 
 /**
- * What the spectrum chart needs: a display frequency floor, a fundamental to hang
- * harmonic markers on, and the boundary model that says which harmonics a pipe or
- * string is allowed to sound.
+ * What the spectrum chart needs: a display frequency floor and a fundamental to
+ * hang harmonic markers on.
+ *
+ * `pipeBoundaryProperty` is optional because the allowed-harmonic shading is
+ * pedagogy for wave superposition rather than for listening: the Composer screen
+ * supplies it, the Analyzer does not.
  */
 export type SpectrumChartModel = BaseAnalysisModel & {
   readonly minFrequencyProperty: NumberProperty;
-  readonly pipeBoundaryProperty: Property<PipeBoundary>;
+  readonly pipeBoundaryProperty?: Property<PipeBoundary>;
   getFundamentalHz(): number;
 };
 
-/** Adds what the standing-wave strip needs, on top of {@link SpectrumChartModel}. */
+/**
+ * Adds what the standing-wave strip needs, on top of {@link SpectrumChartModel}.
+ * A boundary model is required here — it is what decides each mode's shape.
+ */
 export type HarmonicChartModel = SpectrumChartModel & {
+  readonly pipeBoundaryProperty: Property<PipeBoundary>;
   getStandingWaveModes(): readonly StandingWaveMode[];
 };
 

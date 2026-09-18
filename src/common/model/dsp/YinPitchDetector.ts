@@ -8,7 +8,9 @@
  *
  * Pipeline: RMS silence gate → difference function → cumulative mean normalized
  * difference (CMND) → absolute-threshold valley → parabolic interpolation. Each
- * stage is a small helper run once per frame.
+ * stage is a small helper run once per frame. When no lag crosses the threshold
+ * the fallback breaks near-ties toward the shortest lag, so a noisy frame reports
+ * the fundamental rather than one of its sub-harmonics.
  *
  * The difference function is evaluated in O(N log N) via the FFT identity
  *   d[τ] = Σ_i x[i]² + Σ_i x[i+τ]² − 2·Σ_i x[i]·x[i+τ]
@@ -31,6 +33,22 @@ export interface PitchOptions {
 
 /** Above this CMND minimum, even the best lag is deemed unvoiced. */
 const APERIODICITY_REJECT = 0.8;
+
+/**
+ * How much worse than the deepest valley a shorter lag may be and still be
+ * preferred, when no lag crosses the absolute threshold.
+ *
+ * A noisy frame lifts the whole CMND curve, so the valleys at τ0, 2τ0, 3τ0 … end
+ * up within a few percent of each other (measured: 0.293 / 0.278 / 0.313 for one
+ * mic-like frame). Taking the deepest of those is a coin flip that reports f0/2
+ * or f0/3 whenever a sub-multiple wins by a hair. Every one of those valleys is a
+ * true period of the signal; the fundamental is the shortest of them, so a
+ * near-tie is broken toward the shortest lag rather than the deepest valley.
+ */
+const SUBHARMONIC_TOLERANCE = 1.2;
+
+/** Shortest lag whose CMND is meaningful; below this the normalization is noise. */
+const MIN_MEANINGFUL_LAG = 3;
 
 export class YinPitchDetector {
   /** Analysis frame length N; the difference function spans lags 0..N/2. */
@@ -98,7 +116,7 @@ export class YinPitchDetector {
     let tau = this.thresholdLag(options.threshold, tauMin, tauMax);
     let aperiodicity: number;
     if (tau < 0) {
-      const minimum = this.globalMinimum(tauMin, tauMax);
+      const minimum = this.shortestNearMinimumLag(tauMin, tauMax);
       if (minimum.tau < 0 || minimum.value > APERIODICITY_REJECT) {
         return { frequencyHz: 0, confidence: 0, rms: rmsLevel };
       }
@@ -106,6 +124,12 @@ export class YinPitchDetector {
       aperiodicity = minimum.value;
     } else {
       aperiodicity = this.yinBuffer[tau] ?? 1;
+    }
+
+    // The lag search is confined to the band, so a source pitched above it would
+    // otherwise be reported as one of its own multiples at full confidence.
+    if (this.isMultipleOfAnOutOfBandPeriod(tau, tauMin, options.threshold)) {
+      return { frequencyHz: 0, confidence: 0, rms: rmsLevel };
     }
 
     const frequencyHz = options.sampleRate / this.refineLag(tau, half);
@@ -209,7 +233,35 @@ export class YinPitchDetector {
     return -1;
   }
 
-  /** Global CMND minimum within the band (fallback when nothing crosses). */
+  /**
+   * Fallback lag when nothing crosses the absolute threshold: the shortest lag
+   * that is within {@link SUBHARMONIC_TOLERANCE} of the band's deepest CMND
+   * valley, which is the deepest valley itself unless a sub-multiple of the true
+   * period happened to dip slightly lower. See {@link SUBHARMONIC_TOLERANCE}.
+   */
+  private shortestNearMinimumLag(tauMin: number, tauMax: number): { tau: number; value: number } {
+    const yin = this.yinBuffer;
+    const best = this.globalMinimum(tauMin, tauMax);
+    if (best.tau < 0) {
+      return best;
+    }
+    const ceiling = best.value * SUBHARMONIC_TOLERANCE;
+    for (let t = tauMin; t < best.tau; t++) {
+      const v = yin[t] ?? Number.POSITIVE_INFINITY;
+      // Only a valley qualifies: a point part-way down a slope is not a period,
+      // and accepting one would bias every estimate toward tauMin.
+      if (
+        v <= ceiling &&
+        v <= (yin[t - 1] ?? Number.POSITIVE_INFINITY) &&
+        v <= (yin[t + 1] ?? Number.POSITIVE_INFINITY)
+      ) {
+        return { tau: t, value: v };
+      }
+    }
+    return best;
+  }
+
+  /** Global CMND minimum within the band. */
   private globalMinimum(tauMin: number, tauMax: number): { tau: number; value: number } {
     const yin = this.yinBuffer;
     let tau = -1;
@@ -222,6 +274,40 @@ export class YinPitchDetector {
       }
     }
     return { tau, value };
+  }
+
+  /**
+   * Whether the signal is also periodic at a sub-multiple of `tau` lying below
+   * the search band — that is, whether `tau` is a multiple of a real period the
+   * band is too narrow to reach.
+   *
+   * A signal genuinely periodic at `tau` is not periodic at `tau`/2 or `tau`/3,
+   * so a valley there means the true fundamental is above maxFrequencyHz and
+   * `tau` is an artifact of where the search had to stop. Reporting it would be
+   * wrong by an exact integer factor, which reads as a real pitch rather than as
+   * a failure; the caller reports no pitch instead.
+   */
+  private isMultipleOfAnOutOfBandPeriod(tau: number, tauMin: number, threshold: number): boolean {
+    const yin = this.yinBuffer;
+    // A sub-multiple counts as a real period if it is nearly as good as the lag
+    // we chose, or good enough to have been accepted on its own. The second test
+    // carries a clean tone, where both CMND values sit near zero and their ratio
+    // stops meaning anything.
+    const ceiling = Math.max((yin[tau] ?? 1) * SUBHARMONIC_TOLERANCE, threshold);
+    for (let k = 2; tau / k >= MIN_MEANINGFUL_LAG; k++) {
+      const submultiple = tau / k;
+      if (submultiple >= tauMin) {
+        // Still inside the band, where the lag search already had its say.
+        continue;
+      }
+      // tau/k rarely lands exactly on the shorter period's sample index.
+      for (let t = Math.floor(submultiple); t <= Math.ceil(submultiple); t++) {
+        if (t >= MIN_MEANINGFUL_LAG && (yin[t] ?? 1) <= ceiling) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /** Parabolic interpolation around `tau` for sub-sample lag accuracy. */

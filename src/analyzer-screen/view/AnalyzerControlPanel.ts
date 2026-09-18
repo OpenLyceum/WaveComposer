@@ -3,17 +3,16 @@
  *
  * All Analyzer-screen controls: audio source (microphone / demo) with a
  * start/stop button, a freeze toggle, the displayed frequency range and scale,
- * the spectrogram scroll speed, and the harmonic-overlay checkboxes. Analysis
+ * the spectrogram scroll speed, and the harmonic-marker checkboxes. Analysis
  * settings bind to the model; display settings bind to the AnalyzerViewProperties.
  */
 import { DerivedProperty, type NumberProperty, type Property, type TReadOnlyProperty } from "scenerystack/axon";
 import { Dimension2, Range } from "scenerystack/dot";
 import { Line, type Node, Text, VBox } from "scenerystack/scenery";
 import { NumberControl } from "scenerystack/scenery-phet";
-import { ButtonNode, Checkbox, ComboBox, Panel, TextPushButton, VerticalAquaRadioButtonGroup } from "scenerystack/sun";
+import { ButtonNode, Checkbox, Panel, TextPushButton, VerticalAquaRadioButtonGroup } from "scenerystack/sun";
 import { Tandem } from "scenerystack/tandem";
 import { AudioSource } from "../../common/model/BaseAnalysisModel.js";
-import { PipeBoundary, PipeBoundaryValues } from "../../common/model/PipeBoundary.js";
 import { FrequencyScale, FrequencyScaleValues } from "../../common/view/FrequencyScale.js";
 import { createSourceSelector } from "../../common/view/SourceSelector.js";
 import { StringManager } from "../../i18n/StringManager.js";
@@ -29,7 +28,6 @@ export class AnalyzerControlPanel extends Panel {
   public constructor(model: AnalyzerModel, viewProperties: AnalyzerViewProperties, listParent: Node) {
     const controls = StringManager.getInstance().getControlStrings();
     const panelStrings = StringManager.getInstance().getPanelStrings();
-    const physics = StringManager.getInstance().getPhysicsStrings();
 
     // ── Source + start/stop + freeze ────────────────────────────────────────
     const sourceSelector = createSourceSelector(model, listParent);
@@ -113,40 +111,13 @@ export class AnalyzerControlPanel extends Panel {
     );
 
     // ── Overlay visibility ──────────────────────────────────────────────────
-    const pipeBoundaryLabels: Record<PipeBoundary, TReadOnlyProperty<string>> = {
-      [PipeBoundary.NONE]: physics.noneStringProperty,
-      [PipeBoundary.STRING]: physics.stringStringProperty,
-      [PipeBoundary.OPEN_PIPE]: physics.openPipeStringProperty,
-      [PipeBoundary.CLOSED_PIPE]: physics.closedPipeStringProperty,
-    };
-    const pipeBoundaryControl = new ComboBox(
-      model.pipeBoundaryProperty,
-      PipeBoundaryValues.map((value) => ({
-        value,
-        createNode: () => controlText(pipeBoundaryLabels[value]),
-      })),
-      listParent,
-      {
-        buttonFill: WaveComposerColors.buttonFillColorProperty,
-        buttonStroke: WaveComposerColors.panelBorderColorProperty,
-        listFill: WaveComposerColors.buttonFillColorProperty,
-        listStroke: WaveComposerColors.panelBorderColorProperty,
-        highlightFill: WaveComposerColors.comboBoxHighlightColorProperty,
-        accessibleName: controls.pipeBoundaryStringProperty,
-        tandem: Tandem.OPT_OUT,
-      },
-    );
-
     const overlays = new VBox({
       align: "left",
       spacing: 4,
       children: [
         sectionLabel(controls.overlaysStringProperty),
         makeCheckbox(viewProperties.showHarmonicsProperty, controls.showHarmonicsStringProperty),
-        makeCheckbox(viewProperties.showPipeOverlayProperty, controls.showPipeOverlayStringProperty),
         makeCheckbox(viewProperties.showModeNumbersProperty, controls.showModeNumbersStringProperty),
-        sectionLabel(controls.pipeBoundaryStringProperty),
-        pipeBoundaryControl,
       ],
     });
 

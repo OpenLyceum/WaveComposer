@@ -39,6 +39,7 @@ const MAX_FREQUENCY_RANGE = new Range(0, 22050);
 
 // Fixed F0 / voice-quality search band (Hz). Covers low male speech to high
 // singing without wandering into formant territory.
+/** Default F0 search band: the human voice. See {@link BaseAnalysisModel.f0SearchRangeHz}. */
 const F0_MIN_HZ = 60;
 const F0_MAX_HZ = 800;
 
@@ -571,15 +572,32 @@ export class BaseAnalysisModel implements TModel {
     this.stableF0Property.value = this.pitchStabilizer.update(dt, voicedHz);
   }
 
+  /**
+   * Band of fundamentals the pitch detector searches, in Hz.
+   *
+   * A source pitched above this band does not read as "no pitch": the shortest
+   * period the detector is allowed to consider is then the 2nd or 3rd multiple
+   * of the real one, so it reports an exact sub-harmonic — half or a third of
+   * the true pitch — and every harmonic marker hung on it is renumbered to
+   * match. The default is the human voice; screens listening to other sources
+   * override this.
+   *
+   * Read during construction, so overrides must not touch subclass fields.
+   */
+  protected get f0SearchRangeHz(): { readonly minHz: number; readonly maxHz: number } {
+    return { minHz: F0_MIN_HZ, maxHz: F0_MAX_HZ };
+  }
+
   /** Builds the analyzer config from the current settings + source sample rate. */
   private buildConfig(): AnalyzerConfig {
+    const f0Range = this.f0SearchRangeHz;
     return {
       sampleRate: this.source?.sampleRate ?? DEFAULT_SAMPLE_RATE_HZ,
       fftSize: this.fftSizeProperty.value,
       windowType: this.windowTypeProperty.value,
       lpcOrder: this.lpcOrderProperty.value,
-      f0MinHz: F0_MIN_HZ,
-      f0MaxHz: F0_MAX_HZ,
+      f0MinHz: f0Range.minHz,
+      f0MaxHz: f0Range.maxHz,
       formantMaxHz: this.maxFrequencyProperty.value,
     };
   }

@@ -4,8 +4,9 @@
  * Instantaneous FFT power spectrum (magnitude in dB vs frequency), with optional
  * integer-harmonic markers at multiples of the fundamental.
  *
- * Physics pedagogy overlays: allowed-harmonic bands for pipe/string boundary
- * models and mode-number labels on the harmonic markers.
+ * Physics pedagogy overlays: mode-number labels on the harmonic markers, plus
+ * allowed-harmonic bands on screens that supply a boundary model (the Composer;
+ * the Analyzer listens to real instruments and does not).
  *
  * The frequency axis plots a {@link FrequencyScale} coordinate rather than raw Hz,
  * so the same chart serves a linear Hz axis and a per-octave logarithmic one.
@@ -36,7 +37,14 @@ interface SpectrumNodeOptions {
 }
 
 const DB_TICK_SPACING = 20;
+/** Nominal width of an allowed-harmonic band, in Hz. */
 const HARMONIC_BAND_WIDTH_HZ = 18;
+/** Floor on a band's drawn width (view px) so it survives a wide frequency axis. */
+const HARMONIC_BAND_MIN_WIDTH = 6;
+/** Ceiling on a band's drawn width, as a fraction of the gap to the next harmonic. */
+const HARMONIC_BAND_MAX_SPACING_FRACTION = 0.45;
+/** Opacity of an allowed-harmonic band; the spectrum curve draws over the top. */
+const HARMONIC_BAND_OPACITY = 0.3;
 /** Clear space (view px) required between consecutive mode-number labels. */
 const MODE_LABEL_MIN_GAP = 6;
 
@@ -104,9 +112,9 @@ export class SpectrumNode extends Node {
       this.chartCanvas.update();
     });
     viewProperties.showHarmonicsProperty.lazyLink(() => this.update());
-    viewProperties.showPipeOverlayProperty.lazyLink(() => this.update());
+    viewProperties.showPipeOverlayProperty?.lazyLink(() => this.update());
     viewProperties.showModeNumbersProperty.lazyLink(() => this.update());
-    model.pipeBoundaryProperty.lazyLink(() => this.update());
+    model.pipeBoundaryProperty?.lazyLink(() => this.update());
 
     const retarget = () => {
       const [min, max] = scaleRangeFor(
@@ -222,11 +230,12 @@ export class SpectrumNode extends Node {
 
   private updateAllowedHarmonicBands(minF: number, maxF: number): void {
     this.allowedHarmonicLayer.removeAllChildren();
-    if (!this.viewProperties.showPipeOverlayProperty.value) {
+    // Screens that do not teach boundary models supply neither property.
+    if (!this.viewProperties.showPipeOverlayProperty?.value) {
       return;
     }
-    const boundary = this.model.pipeBoundaryProperty.value;
-    if (boundary === PipeBoundary.NONE) {
+    const boundary = this.model.pipeBoundaryProperty?.value;
+    if (boundary === undefined || boundary === PipeBoundary.NONE) {
       return;
     }
     const f0 = this.model.getFundamentalHz();
@@ -240,14 +249,37 @@ export class SpectrumNode extends Node {
       if (freq < minF || !isModeAllowed(modeNumber, boundary)) {
         continue;
       }
-      const xLeft = this.chartTransform.modelToViewX(this.toChartX(Math.max(minF, freq - HARMONIC_BAND_WIDTH_HZ / 2)));
-      const xRight = this.chartTransform.modelToViewX(this.toChartX(Math.min(maxF, freq + HARMONIC_BAND_WIDTH_HZ / 2)));
+      const centerX = this.chartTransform.modelToViewX(this.toChartX(freq));
+      const width = this.harmonicBandWidth(freq, f0, centerX);
+      // The plot layer is clipped, so a band straddling an edge simply draws its
+      // visible half rather than needing to be trimmed in Hz.
       this.allowedHarmonicLayer.addChild(
-        new Rectangle(xLeft, 0, xRight - xLeft, this.viewHeight, {
+        new Rectangle(centerX - width / 2, 0, width, this.viewHeight, {
           fill: WaveComposerColors.allowedHarmonicBandColorProperty,
-          opacity: 0.12,
+          opacity: HARMONIC_BAND_OPACITY,
         }),
       );
     }
+  }
+
+  /**
+   * Drawn width (view px) of the band centered on `freq`.
+   *
+   * Sizing in Hz alone does not survive either axis: {@link HARMONIC_BAND_WIDTH_HZ}
+   * is under a pixel across a 10 kHz linear span, and a logarithmic axis squeezes it
+   * further at every step up the ladder. So the Hz width is only a starting point,
+   * floored so the band stays visible and capped at a fraction of the gap to the
+   * next harmonic so a dense stack reads as separate bands instead of a solid wash.
+   */
+  private harmonicBandWidth(freq: number, f0: number, centerX: number): number {
+    const halfBandHz = HARMONIC_BAND_WIDTH_HZ / 2;
+    const nominal =
+      this.chartTransform.modelToViewX(this.toChartX(freq + halfBandHz)) -
+      this.chartTransform.modelToViewX(this.toChartX(Math.max(freq - halfBandHz, 1)));
+    const neighborGap = Math.abs(this.chartTransform.modelToViewX(this.toChartX(freq + f0)) - centerX);
+    return Math.max(
+      1,
+      Math.min(Math.max(nominal, HARMONIC_BAND_MIN_WIDTH), neighborGap * HARMONIC_BAND_MAX_SPACING_FRACTION),
+    );
   }
 }
