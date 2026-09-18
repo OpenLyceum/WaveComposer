@@ -1,9 +1,9 @@
 /**
  * AnalyzerScreenView.ts
  *
- * The Analyzer screen: a scrolling spectrogram, an instantaneous spectrum (with
- * LPC envelope), and a waveform oscilloscope stacked in the center; a control
- * panel on the left and a live measurement readout on the right.
+ * The Analyzer screen: a scrolling spectrogram, an instantaneous spectrum, and a
+ * waveform oscilloscope stacked in the center; a control panel on the left and a
+ * live measurement readout on the right.
  *
  * The display nodes subscribe themselves to the model (scalar Properties +
  * frameProcessedEmitter), so this view just builds, lays out, and resets them.
@@ -24,17 +24,15 @@ import { AnalyzerReadoutPanel } from "./AnalyzerReadoutPanel.js";
 import type { AnalyzerViewProperties } from "./AnalyzerViewProperties.js";
 import { SpectrogramNode } from "./SpectrogramNode.js";
 import { SpectrumNode } from "./SpectrumNode.js";
-import { StandingWaveNode } from "./StandingWaveNode.js";
 import { WaveformNode } from "./WaveformNode.js";
 
 const MARGIN = WaveComposerConstants.SCREEN_MARGIN;
 const SPACING = WaveComposerConstants.SPACING;
 // Horizontal space reserved for each chart's y-axis label + tick labels.
 const CHART_LEFT_GUTTER = 56;
-const SPECTROGRAM_HEIGHT = 210;
-const SPECTRUM_HEIGHT = 150;
-const WAVEFORM_HEIGHT = 70;
-const STANDING_WAVE_HEIGHT = 56;
+const SPECTROGRAM_HEIGHT = 232;
+const SPECTRUM_HEIGHT = 164;
+const WAVEFORM_HEIGHT = 72;
 
 export type AnalyzerScreenViewOptions = ScreenViewOptions;
 
@@ -87,15 +85,11 @@ export class AnalyzerScreenView extends BaseAnalysisScreenView {
       viewWidth: chartViewWidth,
       viewHeight: WAVEFORM_HEIGHT,
     });
-    const standingWave = new StandingWaveNode(model, {
-      viewWidth: chartViewWidth,
-      viewHeight: STANDING_WAVE_HEIGHT,
-    });
 
     const charts = new VBox({
       align: "left",
       spacing: SPACING + 14,
-      children: [this.spectrogram, spectrum, waveform, standingWave],
+      children: [this.spectrogram, spectrum, waveform],
     });
     charts.left = chartLeft;
     charts.top = this.layoutBounds.minY + MARGIN;

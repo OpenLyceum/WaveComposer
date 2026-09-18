@@ -9,7 +9,6 @@ import type { ChartOverlayProperties } from "../../common/view/ChartOverlayPrope
 import { WaveComposerConstants } from "../../WaveComposerConstants.js";
 
 export class ComposerViewProperties implements ChartOverlayProperties {
-  public readonly showLpcEnvelopeProperty = new BooleanProperty(false);
   public readonly showHarmonicsProperty = new BooleanProperty(true);
   public readonly showPipeOverlayProperty = new BooleanProperty(true);
   public readonly showModeNumbersProperty = new BooleanProperty(true);
@@ -20,7 +19,6 @@ export class ComposerViewProperties implements ChartOverlayProperties {
   });
 
   public reset(): void {
-    this.showLpcEnvelopeProperty.reset();
     this.showHarmonicsProperty.reset();
     this.showPipeOverlayProperty.reset();
     this.showModeNumbersProperty.reset();

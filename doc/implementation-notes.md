@@ -30,16 +30,16 @@ src/common/model/
 
 src/common/view/
   ├─ BaseAnalysisScreenView.ts   shared shell, start/stop, reset
-  ├─ ChartFrame.ts, SourceSelector.ts, Colormaps.ts, IpaVowels.ts
+  ├─ ChartFrame.ts, SourceSelector.ts, Colormaps.ts, FrequencyScale.ts, IpaVowels.ts
   └─ WaveComposerScreenSummaryContent.ts, WaveComposerKeyboardHelpContent.ts
 
 src/composer-screen/
   ├─ model/ComposerModel.ts
-  └─ view/ ComposePanelNode, ComposerControlPanel, ComposerReadoutPanel, …
+  └─ view/ ComposePanelNode, ComposerControlPanel, ComposerReadoutPanel, StandingWaveNode, …
 
 src/analyzer-screen/
   ├─ model/AnalyzerModel.ts
-  └─ view/ WaveformNode, SpectrumNode, SpectrogramNode, StandingWaveNode, …
+  └─ view/ WaveformNode, SpectrumNode, SpectrogramNode, …
 
 src/voice-screen/
   ├─ model/VoiceModel.ts
@@ -64,6 +64,21 @@ in `src/WaveComposerConstants.ts` and `src/preferences/AnalysisConstants.ts`.
   reference voice-analysis practice (see comments in `VoiceAnalyzer.ts`).
 - **View-only overlay state.** `ComposerViewProperties` / `AnalyzerViewProperties` hold chart toggles
   separate from the DSP model.
+- **Screen scope.** The Analyzer screen is for music and instruments: it shows the spectrogram,
+  spectrum (harmonic markers, allowed-harmonic bands, mode numbers) and waveform. Voice-specific
+  displays — LPC envelope, formant tracks, voiced/unvoiced and F1–F4 readouts — belong to Voice &
+  Vowels. `SpectrumChartModel` is what the spectrum needs; `HarmonicChartModel` adds the standing-wave
+  strip that only the Composer draws.
+- **Frequency scale as a plotting coordinate.** Rather than a log-aware ChartTransform, charts plot
+  `toScaleCoordinate()` — Hz when linear, log₂(Hz) when logarithmic — so bamboo's evenly spaced grid
+  lines land one per octave and only the tick labels convert back to Hz (`common/view/FrequencyScale.ts`).
+  `ChartFrame.setXAxis()` / `setYAxis()` retarget range, spacing and label format in place.
+- **Freeze stops the sound too.** `isFrozenProperty` lives on `BaseAnalysisModel`: it halts `step()`
+  *and* is folded into `isMonitoringProperty`, so a frozen display never keeps playing audio that has
+  moved past what is on screen.
+- **Spectrogram scroll speed.** The raster writes `scrollSpeedProperty` columns per analyzed frame,
+  carrying the fractional remainder in `columnCredit` so speeds below 1× write a column every few
+  frames instead of rounding to a standstill.
 - **Superposition is drawn, not implied.** `WaveformNode` accepts optional `componentTraces`; the
   Composer screen supplies one per partial, filled by `ComposerModel.fillPartialWaveform()` on the
   same time base as the sum, so the faint component curves line up sample-for-sample with the bold

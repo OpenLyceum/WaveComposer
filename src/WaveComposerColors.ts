@@ -149,12 +149,7 @@ const WaveComposerColors = {
     projector: "#f9a825",
   }),
 
-  // ── Overlay tracks (spectrogram + spectrum formant markers) ───────────────────
-  /** Fundamental-frequency (F0) track. */
-  f0TrackColorProperty: new ProfileColorProperty(WaveComposerNamespace, "f0Track", {
-    default: "#ffffff",
-    projector: "#000000",
-  }),
+  // ── Formant palette (Voice & Vowels readouts, screen icons) ───────────────────
   formant1ColorProperty: new ProfileColorProperty(WaveComposerNamespace, "formant1", {
     default: "#ff5252",
     projector: "#c62828",

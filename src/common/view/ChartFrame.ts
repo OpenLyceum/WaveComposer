@@ -12,12 +12,12 @@
  * axis titles extend into small gutters to the left of / below it.
  */
 import type { TReadOnlyProperty } from "scenerystack/axon";
-import { AxisLine, ChartRectangle, ChartTransform, GridLineSet, TickLabelSet, TickMarkSet } from "scenerystack/bamboo";
+import { ChartRectangle, ChartTransform, GridLineSet, TickLabelSet, TickMarkSet } from "scenerystack/bamboo";
 import type { Range } from "scenerystack/dot";
 import { toFixed } from "scenerystack/dot";
 import { Shape } from "scenerystack/kite";
 import { Orientation } from "scenerystack/phet-core";
-import { Node, Text } from "scenerystack/scenery";
+import { Line, Node, Text } from "scenerystack/scenery";
 import WaveComposerColors from "../../WaveComposerColors.js";
 import { WaveComposerConstants } from "../../WaveComposerConstants.js";
 
@@ -46,6 +46,9 @@ export class ChartFrame extends Node {
   public readonly chartTransform: ChartTransform;
   /** Clipped layer for plot content; add CanvasLinePlot/ScatterPlot nodes here. */
   public readonly plotLayer: Node;
+  /** Tick/grid sets per axis, kept so {@link setXAxis}/{@link setYAxis} can retarget them. */
+  private readonly xAxisSets: AxisSets = {};
+  private readonly yAxisSets: AxisSets = {};
 
   public constructor(options: ChartFrameOptions) {
     super();
@@ -70,20 +73,18 @@ export class ChartFrame extends Node {
     this.addChild(background);
 
     if (options.xSpacing !== undefined) {
-      this.addChild(
-        new GridLineSet(transform, Orientation.HORIZONTAL, options.xSpacing, {
-          stroke: WaveComposerColors.gridLineColorProperty,
-          lineWidth: 0.5,
-        }),
-      );
+      this.xAxisSets.gridLines = new GridLineSet(transform, Orientation.HORIZONTAL, options.xSpacing, {
+        stroke: WaveComposerColors.gridLineColorProperty,
+        lineWidth: 0.5,
+      });
+      this.addChild(this.xAxisSets.gridLines);
     }
     if (options.ySpacing !== undefined) {
-      this.addChild(
-        new GridLineSet(transform, Orientation.VERTICAL, options.ySpacing, {
-          stroke: WaveComposerColors.gridLineColorProperty,
-          lineWidth: 0.5,
-        }),
-      );
+      this.yAxisSets.gridLines = new GridLineSet(transform, Orientation.VERTICAL, options.ySpacing, {
+        stroke: WaveComposerColors.gridLineColorProperty,
+        lineWidth: 0.5,
+      });
+      this.addChild(this.yAxisSets.gridLines);
     }
 
     this.plotLayer = new Node({
@@ -91,44 +92,42 @@ export class ChartFrame extends Node {
     });
     this.addChild(this.plotLayer);
 
-    // Axes along the chart edges.
+    // The y axis, pinned to the left edge of the plotting area. A bamboo AxisLine
+    // is pinned to a model *value* instead, which wanders off the chart — dragging
+    // the node's bounds with it — on any axis that doesn't contain that value,
+    // such as a logarithmic frequency axis or the cepstrum's 1 ms floor.
     this.addChild(
-      new AxisLine(transform, Orientation.VERTICAL, {
+      new Line(0, 0, 0, options.viewHeight, {
         stroke: WaveComposerColors.axisColorProperty,
         lineWidth: 1,
-        value: 0,
       }),
     );
 
     if (options.xSpacing !== undefined) {
-      this.addChild(
-        new TickMarkSet(transform, Orientation.HORIZONTAL, options.xSpacing, {
-          edge: "min",
-          stroke: WaveComposerColors.axisColorProperty,
-          extent: TICK_LENGTH,
-        }),
-      );
-      this.addChild(
-        new TickLabelSet(transform, Orientation.HORIZONTAL, options.xSpacing, {
-          edge: "min",
-          createLabel: options.createXTickLabel ?? defaultTickLabel,
-        }),
-      );
+      this.xAxisSets.tickMarks = new TickMarkSet(transform, Orientation.HORIZONTAL, options.xSpacing, {
+        edge: "min",
+        stroke: WaveComposerColors.axisColorProperty,
+        extent: TICK_LENGTH,
+      });
+      this.xAxisSets.tickLabels = new TickLabelSet(transform, Orientation.HORIZONTAL, options.xSpacing, {
+        edge: "min",
+        createLabel: options.createXTickLabel ?? defaultTickLabel,
+      });
+      this.addChild(this.xAxisSets.tickMarks);
+      this.addChild(this.xAxisSets.tickLabels);
     }
     if (options.ySpacing !== undefined) {
-      this.addChild(
-        new TickMarkSet(transform, Orientation.VERTICAL, options.ySpacing, {
-          edge: "min",
-          stroke: WaveComposerColors.axisColorProperty,
-          extent: TICK_LENGTH,
-        }),
-      );
-      this.addChild(
-        new TickLabelSet(transform, Orientation.VERTICAL, options.ySpacing, {
-          edge: "min",
-          createLabel: options.createYTickLabel ?? defaultTickLabel,
-        }),
-      );
+      this.yAxisSets.tickMarks = new TickMarkSet(transform, Orientation.VERTICAL, options.ySpacing, {
+        edge: "min",
+        stroke: WaveComposerColors.axisColorProperty,
+        extent: TICK_LENGTH,
+      });
+      this.yAxisSets.tickLabels = new TickLabelSet(transform, Orientation.VERTICAL, options.ySpacing, {
+        edge: "min",
+        createLabel: options.createYTickLabel ?? defaultTickLabel,
+      });
+      this.addChild(this.yAxisSets.tickMarks);
+      this.addChild(this.yAxisSets.tickLabels);
     }
 
     if (options.xLabel !== undefined) {
@@ -150,6 +149,40 @@ export class ChartFrame extends Node {
       yTitle.centerY = options.viewHeight / 2;
       this.addChild(yTitle);
     }
+  }
+
+  /**
+   * Retargets the x-axis: model range, tick/grid spacing, and optionally the tick
+   * label format. The Analyzer's spectrum uses this to switch its frequency axis
+   * between linear Hz and per-octave log spacing without rebuilding the chart.
+   */
+  public setXAxis(range: Range, spacing?: number, createLabel?: (value: number) => Node): void {
+    this.chartTransform.setModelXRange(range);
+    retargetAxis(this.xAxisSets, spacing, createLabel);
+  }
+
+  /** {@link setXAxis} for the y-axis (the spectrogram's frequency axis). */
+  public setYAxis(range: Range, spacing?: number, createLabel?: (value: number) => Node): void {
+    this.chartTransform.setModelYRange(range);
+    retargetAxis(this.yAxisSets, spacing, createLabel);
+  }
+}
+
+/** The tick, grid, and label sets of one axis; absent when the axis has no spacing. */
+type AxisSets = {
+  gridLines?: GridLineSet;
+  tickMarks?: TickMarkSet;
+  tickLabels?: TickLabelSet;
+};
+
+function retargetAxis(sets: AxisSets, spacing?: number, createLabel?: (value: number) => Node): void {
+  if (spacing !== undefined) {
+    sets.gridLines?.setSpacing(spacing);
+    sets.tickMarks?.setSpacing(spacing);
+    sets.tickLabels?.setSpacing(spacing);
+  }
+  if (createLabel) {
+    sets.tickLabels?.setCreateLabel(createLabel);
   }
 }
 

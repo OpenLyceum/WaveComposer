@@ -5,7 +5,7 @@
  * four sinusoids and feeds the shared DSP pipeline for live waveform, spectrum,
  * and standing-wave displays.
  */
-import { BooleanProperty, NumberProperty } from "scenerystack/axon";
+import { NumberProperty } from "scenerystack/axon";
 import { Range } from "scenerystack/dot";
 import { createComposableGenerator, createComposableSource } from "../../common/model/audio/ComposableFrameSource.js";
 import { BaseAnalysisModel } from "../../common/model/BaseAnalysisModel.js";
@@ -28,7 +28,6 @@ const HARMONIC_RATIO_TOLERANCE = 0.01;
 
 export class ComposerModel extends BaseAnalysisModel implements HarmonicChartModel {
   public readonly minFrequencyProperty = new NumberProperty(DEFAULT_MIN_FREQUENCY_HZ, { range: FREQUENCY_RANGE });
-  public readonly isFrozenProperty = new BooleanProperty(false);
   public readonly composition = new CompositionState();
   public readonly pipeBoundaryProperty = createPipeBoundaryProperty(PipeBoundary.STRING);
   private readonly displayGenerator = createComposableGenerator(() => this.composition.getPartials());
@@ -57,7 +56,6 @@ export class ComposerModel extends BaseAnalysisModel implements HarmonicChartMod
   public override reset(): void {
     super.reset();
     this.minFrequencyProperty.reset();
-    this.isFrozenProperty.reset();
     this.composition.reset();
     this.pipeBoundaryProperty.reset();
     this.audioSourceProperty.value = COMPOSE_SOURCE_ID;
@@ -122,10 +120,6 @@ export class ComposerModel extends BaseAnalysisModel implements HarmonicChartMod
     const beatHz = Math.abs(high - low);
     // Only report a rate the ear would actually perceive as beating.
     return beatHz <= MAX_BEAT_RATE_HZ ? beatHz : 0;
-  }
-
-  protected override get isAnalysisPaused(): boolean {
-    return this.isFrozenProperty.value;
   }
 
   /**

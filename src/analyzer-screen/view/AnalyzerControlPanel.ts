@@ -2,24 +2,25 @@
  * AnalyzerControlPanel.ts
  *
  * All Analyzer-screen controls: audio source (microphone / demo) with a
- * start/stop button, a freeze toggle, max frequency, and overlay-visibility
- * checkboxes. Analysis settings bind to the model; display settings bind to the
- * AnalyzerViewProperties.
+ * start/stop button, a freeze toggle, the displayed frequency range and scale,
+ * the spectrogram scroll speed, and the harmonic-overlay checkboxes. Analysis
+ * settings bind to the model; display settings bind to the AnalyzerViewProperties.
  */
 import { DerivedProperty, type NumberProperty, type Property, type TReadOnlyProperty } from "scenerystack/axon";
 import { Dimension2, Range } from "scenerystack/dot";
 import { Line, type Node, Text, VBox } from "scenerystack/scenery";
 import { NumberControl } from "scenerystack/scenery-phet";
-import { ButtonNode, Checkbox, ComboBox, Panel, TextPushButton } from "scenerystack/sun";
+import { ButtonNode, Checkbox, ComboBox, Panel, TextPushButton, VerticalAquaRadioButtonGroup } from "scenerystack/sun";
 import { Tandem } from "scenerystack/tandem";
 import { AudioSource } from "../../common/model/BaseAnalysisModel.js";
 import { PipeBoundary, PipeBoundaryValues } from "../../common/model/PipeBoundary.js";
+import { FrequencyScale, FrequencyScaleValues } from "../../common/view/FrequencyScale.js";
 import { createSourceSelector } from "../../common/view/SourceSelector.js";
 import { StringManager } from "../../i18n/StringManager.js";
 import WaveComposerColors from "../../WaveComposerColors.js";
 import { WaveComposerConstants } from "../../WaveComposerConstants.js";
 import type { AnalyzerModel } from "../model/AnalyzerModel.js";
-import type { AnalyzerViewProperties } from "./AnalyzerViewProperties.js";
+import { type AnalyzerViewProperties, SCROLL_SPEED_RANGE } from "./AnalyzerViewProperties.js";
 
 const MAX_FREQUENCY_RANGE = new Range(2000, 10000);
 const PANEL_WIDTH = 232;
@@ -69,7 +70,7 @@ export class AnalyzerControlPanel extends Panel {
       model.isGlobalAudioEnabledProperty,
     );
 
-    // ── Analysis settings ───────────────────────────────────────────────────
+    // ── Display settings ────────────────────────────────────────────────────
     const maxFreqControl = makeNumberControl(
       controls.maxFrequencyStringProperty,
       model.maxFrequencyProperty,
@@ -78,6 +79,40 @@ export class AnalyzerControlPanel extends Panel {
       " Hz",
     );
 
+    const frequencyScaleLabels: Record<FrequencyScale, TReadOnlyProperty<string>> = {
+      [FrequencyScale.LINEAR]: controls.linearScaleStringProperty,
+      [FrequencyScale.LOGARITHMIC]: controls.logScaleStringProperty,
+    };
+    const frequencyScaleControl = new VerticalAquaRadioButtonGroup(
+      viewProperties.frequencyScaleProperty,
+      FrequencyScaleValues.map((value) => ({
+        value,
+        createNode: () => controlText(frequencyScaleLabels[value]),
+        options: { accessibleName: frequencyScaleLabels[value] },
+      })),
+      {
+        spacing: 4,
+        radioButtonOptions: {
+          radius: 7,
+          selectedColor: WaveComposerColors.accentColorProperty,
+          deselectedColor: WaveComposerColors.chartBackgroundColorProperty,
+          stroke: WaveComposerColors.panelBorderColorProperty,
+        },
+        accessibleName: controls.frequencyScaleStringProperty,
+        tandem: Tandem.OPT_OUT,
+      },
+    );
+
+    const scrollSpeedControl = makeNumberControl(
+      controls.scrollSpeedStringProperty,
+      viewProperties.scrollSpeedProperty,
+      SCROLL_SPEED_RANGE,
+      0.5,
+      "×",
+      1,
+    );
+
+    // ── Overlay visibility ──────────────────────────────────────────────────
     const pipeBoundaryLabels: Record<PipeBoundary, TReadOnlyProperty<string>> = {
       [PipeBoundary.NONE]: physics.noneStringProperty,
       [PipeBoundary.STRING]: physics.stringStringProperty,
@@ -102,15 +137,11 @@ export class AnalyzerControlPanel extends Panel {
       },
     );
 
-    // ── Overlay visibility ──────────────────────────────────────────────────
     const overlays = new VBox({
       align: "left",
       spacing: 4,
       children: [
         sectionLabel(controls.overlaysStringProperty),
-        makeCheckbox(viewProperties.showF0TrackProperty, controls.showF0StringProperty),
-        makeCheckbox(viewProperties.showFormantTracksProperty, controls.showFormantsStringProperty),
-        makeCheckbox(viewProperties.showLpcEnvelopeProperty, controls.showLpcEnvelopeStringProperty),
         makeCheckbox(viewProperties.showHarmonicsProperty, controls.showHarmonicsStringProperty),
         makeCheckbox(viewProperties.showPipeOverlayProperty, controls.showPipeOverlayStringProperty),
         makeCheckbox(viewProperties.showModeNumbersProperty, controls.showModeNumbersStringProperty),
@@ -134,6 +165,9 @@ export class AnalyzerControlPanel extends Panel {
         freezeCheckbox,
         divider(),
         maxFreqControl,
+        sectionLabel(controls.frequencyScaleStringProperty),
+        frequencyScaleControl,
+        scrollSpeedControl,
         divider(),
         overlays,
       ],
@@ -187,12 +221,14 @@ function makeNumberControl(
   range: Range,
   delta: number,
   unit = "",
+  decimalPlaces = 0,
 ): NumberControl {
   return new NumberControl(title, property, range, {
     delta,
     titleNodeOptions: { font: WaveComposerConstants.LABEL_FONT, fill: WaveComposerColors.textColorProperty },
     numberDisplayOptions: {
       valuePattern: `{{value}}${unit}`,
+      decimalPlaces,
       textOptions: { font: WaveComposerConstants.CONTROL_FONT },
     },
     sliderOptions: { trackSize: new Dimension2(120, 3), thumbSize: new Dimension2(13, 22) },

@@ -34,10 +34,11 @@
     "window": "Fenêtre",
     "maxFrequency": "Fréquence max",
     "colormap": "Palette",
+    "frequencyScale": "Échelle de fréquence",
+    "linearScale": "Linéaire",
+    "logScale": "Logarithmique",
+    "scrollSpeed": "Vitesse de défilement",
     "overlays": "Superpositions",
-    "showF0": "Tracé F0",
-    "showFormants": "Tracés des formants",
-    "showLpcEnvelope": "Enveloppe LPC",
     "showHarmonics": "Repères harmoniques",
     "showPipeOverlay": "Harmoniques autorisées",
     "showModeNumbers": "Numéros de mode (n)",
@@ -75,7 +76,6 @@
     "standingWave": "Onde stationnaire",
     "modeLabel": "n = {{n}}",
     "resonance": "Résonance",
-    "resonanceCaption": "Pics LPC = résonances",
     "sourceFilter": "Modèle source–filtre",
     "glottalSource": "Source glottale",
     "vocalTract": "Filtre du conduit vocal",
@@ -186,7 +186,6 @@
     "formant1": "F1",
     "formant2": "F2",
     "formant3": "F3",
-    "formant4": "F4",
     "hnr": "HNR",
     "cpp": "CPP",
     "level": "Niveau",
@@ -220,8 +219,8 @@
     },
     "analyzer": {
       "screenSummary": {
-        "playArea": "La zone de jeu montre un son analysé en ses composantes fréquentielles, affiché sous forme de spectrogramme, de spectre avec une enveloppe spectrale et de forme d'onde.",
-        "controlArea": "Les commandes choisissent la source sonore et les préréglages, règlent la plage de fréquences et la fenêtre d'analyse, et figent ou lancent l'affichage. Un bouton Tout réinitialiser ramène la simulation à son état initial.",
+        "playArea": "La zone de jeu montre un son analysé en ses composantes fréquentielles, affiché sous forme de spectrogramme, de spectre avec des repères harmoniques et de forme d'onde.",
+        "controlArea": "Les commandes choisissent la source sonore et les préréglages, règlent la plage de fréquences, l'échelle de fréquence et la vitesse de défilement du spectrogramme, et figent ou lancent l'affichage. Un bouton Tout réinitialiser ramène la simulation à son état initial.",
         "interactionHint": "Choisissez une source sonore et observez comment son contenu fréquentiel apparaît dans le spectrogramme et le spectre."
       },
       "currentDetails": "Choisissez une source sonore et observez son spectrogramme, son spectre et sa forme d'onde."
