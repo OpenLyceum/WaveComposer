@@ -17,6 +17,7 @@ import {
 } from "scenerystack/axon";
 import { Range } from "scenerystack/dot";
 import type { TModel } from "scenerystack/joist";
+import { audioManager } from "scenerystack/sim";
 import type { WaveComposerPreferencesModel } from "../../preferences/WaveComposerPreferencesModel.js";
 import { AudioFileFrameSource } from "./audio/AudioFileFrameSource.js";
 import { type AudioFrameSource, isPlayableSource } from "./audio/AudioFrameSource.js";
@@ -113,6 +114,23 @@ export class BaseAnalysisModel implements TModel {
   public readonly isListeningProperty = new BooleanProperty(false);
   /** When true, the active source is routed to the speakers. */
   public readonly isAudioEnabledProperty = new BooleanProperty(true);
+  /**
+   * The global audio state: the navigation-bar sound button AND
+   * Preferences > Audio > Sounds. Re-exported here so views can grey out their
+   * audio controls without reaching for the joist singleton themselves.
+   */
+  public readonly isGlobalAudioEnabledProperty: TReadOnlyProperty<boolean> = audioManager.audioAndSoundEnabledProperty;
+  /**
+   * Whether the active source actually reaches the speakers: the screen's own
+   * audio toggle AND the global audio state. This sim monitors raw Web Audio
+   * graphs instead of tambo SoundGenerators, so nothing mutes it for us - the
+   * global state has to be folded in explicitly or the sim keeps playing with
+   * sound switched off.
+   */
+  public readonly isMonitoringProperty: TReadOnlyProperty<boolean> = DerivedProperty.and([
+    this.isAudioEnabledProperty,
+    this.isGlobalAudioEnabledProperty,
+  ]);
   /** Sample rate (Hz) of the active source; the view needs it to map FFT bins to Hz. */
   public readonly sampleRateProperty = new NumberProperty(DEFAULT_SAMPLE_RATE_HZ);
   /**
@@ -213,7 +231,7 @@ export class BaseAnalysisModel implements TModel {
       this.activate(source);
       this.applyConfig();
     });
-    this.isAudioEnabledProperty.lazyLink(() => this.applyMonitoring());
+    this.isMonitoringProperty.lazyLink(() => this.applyMonitoring());
   }
 
   /** The audio source the analyzer currently reads from, or null if none is registered. */
@@ -255,9 +273,9 @@ export class BaseAnalysisModel implements TModel {
     }
   }
 
-  /** Pushes the play-audio toggle to every source that supports speaker output. */
+  /** Pushes the effective play-audio state to every source that supports speaker output. */
   private applyMonitoring(): void {
-    const enabled = this.isAudioEnabledProperty.value;
+    const enabled = this.isMonitoringProperty.value;
     for (const source of this.sources.values()) {
       if (isMonitoredAudioSource(source)) {
         source.setMonitoringEnabled(enabled);
@@ -412,6 +430,9 @@ export class BaseAnalysisModel implements TModel {
   /** Registers an extra selectable source (e.g. the Analyzer compose lab). */
   protected registerAdditionalSource(id: string, source: AudioFrameSource): void {
     this.sources.set(id, source);
+    // A source added after construction starts out monitoring-enabled, so push
+    // the current state onto it right away.
+    this.applyMonitoring();
   }
 
   /** Extra source ids after microphone; override in screen-specific models. */
