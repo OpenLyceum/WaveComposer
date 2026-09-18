@@ -175,10 +175,17 @@ export class BaseAnalysisModel implements TModel {
   private readonly analyzer: VoiceAnalyzer;
   private frameBuffer: Float32Array;
   private latestResult: AnalysisResult | null = null;
-  /** True while this screen is hidden and playback was stopped for that reason. */
-  private screenAudioSuspended = false;
+  /**
+   * Whether this screen is the one on display. Starts false: every screen's model
+   * is built before joist shows a screen, so a source selected in the constructor
+   * (e.g. the Composer's synth) must not reach the speakers until
+   * {@link linkAnalysisModelToScreenActive} reports this screen active.
+   */
+  private isScreenActive = false;
+  /** Whether the selected source should play while this screen is active. */
+  private wantsPlayback = false;
+  /** Whether the microphone was capturing when this screen was hidden. */
   private resumeMicAfterScreenActive = false;
-  private resumePlaybackAfterScreenActive = false;
 
   public get fftSizeProperty(): NumberProperty {
     return this.analysisPreferences.fftSizeProperty;
@@ -244,21 +251,33 @@ export class BaseAnalysisModel implements TModel {
   /** Starts a newly selected source. File/synthetic/recorded clips auto-play; the mic stays lazy. */
   private activate(value: string): void {
     const source = this.sources.get(value);
-    if (source && isPlayableSource(source)) {
-      // The source's sampleRate is only guaranteed accurate once start() has
-      // resolved (the shared AudioContext is created synchronously today, but
-      // that is an implementation detail of start()). Re-apply the analyzer
-      // config afterward so every frequency mapping uses the real device rate.
-      source
-        .start()
-        .then(() => {
-          if (this.audioSourceProperty.value === value) {
-            this.applyConfig();
-          }
-        })
-        .catch(() => undefined);
+    this.wantsPlayback = source !== undefined && isPlayableSource(source);
+    // A source selected while this screen is hidden waits for the screen to be
+    // shown; starting it here would play one screen's audio over another's.
+    if (this.wantsPlayback && this.isScreenActive) {
+      this.startPlayback(value);
     }
     this.applyMonitoring();
+  }
+
+  /** Builds and starts the audio graph for a playable source id. */
+  private startPlayback(value: string): void {
+    const source = this.sources.get(value);
+    if (!(source && isPlayableSource(source))) {
+      return;
+    }
+    // The source's sampleRate is only guaranteed accurate once start() has
+    // resolved (the shared AudioContext is created synchronously today, but
+    // that is an implementation detail of start()). Re-apply the analyzer
+    // config afterward so every frequency mapping uses the real device rate.
+    source
+      .start()
+      .then(() => {
+        if (this.audioSourceProperty.value === value) {
+          this.applyConfig();
+        }
+      })
+      .catch(() => undefined);
   }
 
   /** Releases a source we are leaving (mic device / clip playback). */
@@ -311,6 +330,15 @@ export class BaseAnalysisModel implements TModel {
       this.isListeningProperty.value = false;
       return;
     }
+    if (!this.isScreenActive) {
+      // The user left this screen while the permission prompt was up. Release
+      // the device instead of capturing behind a hidden screen, and arm the
+      // resume so the microphone comes back when they return.
+      this.micInput.stop();
+      this.isListeningProperty.value = false;
+      this.resumeMicAfterScreenActive = true;
+      return;
+    }
     this.audioNoticeProperty.value = null;
     // The AudioContext's sample rate is known only after start.
     this.applyConfig();
@@ -323,43 +351,41 @@ export class BaseAnalysisModel implements TModel {
    * {@link linkAnalysisModelToScreenActive}; playback can be restored on return.
    */
   public suspendAudioForInactiveScreen(): void {
-    if (this.screenAudioSuspended) {
+    if (!this.isScreenActive) {
       return;
     }
-    this.screenAudioSuspended = true;
+    this.isScreenActive = false;
 
     const sourceId = this.audioSourceProperty.value;
     if (sourceId === AudioSource.MICROPHONE) {
       this.resumeMicAfterScreenActive = this.isListeningProperty.value;
-      if (this.resumeMicAfterScreenActive) {
-        this.stopListening();
-      }
-      return;
     }
-
-    const source = this.sources.get(sourceId);
-    this.resumePlaybackAfterScreenActive = source !== undefined && isPlayableSource(source) && source.isActive;
-    if (this.resumePlaybackAfterScreenActive) {
-      this.deactivate(sourceId);
-    }
+    // Stop unconditionally rather than only when the source reports isActive: a
+    // start() issued before the first user gesture is still pending while the
+    // shared AudioContext is suspended, so the source is not active yet even
+    // though its graph is about to come alive. stop() cancels that in-flight
+    // start; an isActive check would let it through and the hidden screen would
+    // become audible on the user's first click.
+    this.deactivate(sourceId);
   }
 
   /** Restores playback that {@link suspendAudioForInactiveScreen} paused when the screen is shown again. */
   public resumeAudioForActiveScreen(): void {
-    if (!this.screenAudioSuspended) {
+    if (this.isScreenActive) {
       return;
     }
-    this.screenAudioSuspended = false;
+    this.isScreenActive = true;
 
-    if (this.resumeMicAfterScreenActive) {
-      this.resumeMicAfterScreenActive = false;
-      this.startListening().catch(() => undefined);
+    if (this.audioSourceProperty.value === AudioSource.MICROPHONE) {
+      if (this.resumeMicAfterScreenActive) {
+        this.resumeMicAfterScreenActive = false;
+        this.startListening().catch(() => undefined);
+      }
       return;
     }
 
-    if (this.resumePlaybackAfterScreenActive) {
-      this.resumePlaybackAfterScreenActive = false;
-      this.activate(this.audioSourceProperty.value);
+    if (this.wantsPlayback) {
+      this.startPlayback(this.audioSourceProperty.value);
     }
   }
 

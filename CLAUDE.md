@@ -84,6 +84,7 @@ Fleet-standard Vitest layout:
 
 Actual specs:
 
+- `tests/common/model/BaseAnalysisModel.test.ts`
 - `tests/common/model/VoiceAnalyzer.test.ts`
 - `tests/common/model/audio/ComposableFrameSource.test.ts`
 - `tests/common/model/audio/PresetFrameSource.test.ts`

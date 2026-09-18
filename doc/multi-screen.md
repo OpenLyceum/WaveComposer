@@ -30,6 +30,11 @@ Models are constructed **before** screens and passed into the Screen
 constructor (factory returns the same instance). `linkAnalysisModelToScreenActive`
 pauses inactive screens’ DSP pipelines.
 
+Because the models exist before any screen is shown, a model starts out
+“screen inactive” and refuses to start playback until joist reports its screen
+active — otherwise the Composer’s synth, which selects its source in the
+constructor, would be heard on whichever screen the user opens first.
+
 ---
 
 ## Folder layout
