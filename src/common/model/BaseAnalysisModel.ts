@@ -29,6 +29,7 @@ import { createSyntheticSource } from "./audio/presets.js";
 import { RecordedAudioSource } from "./audio/RecordedAudioSource.js";
 import { SyntheticWebAudioSource } from "./audio/SyntheticWebAudioSource.js";
 import { centsFromFrequency, noteNameFromFrequency } from "./dsp/NoteUtils.js";
+import { PitchStabilizer } from "./dsp/PitchStabilizer.js";
 import type { FormantData } from "./dsp/types.js";
 import type { WindowType } from "./dsp/WindowFunction.js";
 import { type AnalysisResult, type AnalyzerConfig, VoiceAnalyzer } from "./VoiceAnalyzer.js";
@@ -160,10 +161,19 @@ export class BaseAnalysisModel implements TModel {
     [this.f0Property, this.f0ConfidenceProperty],
     (f0, confidence) => f0 > 0 && confidence >= VOICED_CONFIDENCE_THRESHOLD,
   );
-  public readonly noteNameProperty: TReadOnlyProperty<string> = new DerivedProperty([this.f0Property], (f0) =>
+  /**
+   * Pitch for anything a person reads rather than watches: the numeric readouts
+   * and the harmonic / mode-number overlays. A {@link PitchStabilizer} holds it
+   * still through the per-frame jitter and the occasional octave error, which
+   * would otherwise renumber every harmonic marker several times a second.
+   * Displays that follow the signal frame by frame, such as the cepstrum's
+   * pitch-quefrency marker, use the per-frame {@link f0Property} instead.
+   */
+  public readonly stableF0Property = new NumberProperty(0);
+  public readonly noteNameProperty: TReadOnlyProperty<string> = new DerivedProperty([this.stableF0Property], (f0) =>
     noteNameFromFrequency(f0),
   );
-  public readonly centsProperty: TReadOnlyProperty<number> = new DerivedProperty([this.f0Property], (f0) =>
+  public readonly centsProperty: TReadOnlyProperty<number> = new DerivedProperty([this.stableF0Property], (f0) =>
     f0 > 0 ? centsFromFrequency(f0) : 0,
   );
   public readonly f1FrequencyProperty: TReadOnlyProperty<number> = this.createFormantFrequencyProperty(0);
@@ -182,6 +192,8 @@ export class BaseAnalysisModel implements TModel {
   private readonly analyzer: VoiceAnalyzer;
   private frameBuffer: Float32Array;
   private latestResult: AnalysisResult | null = null;
+  /** Smooths the per-frame F0 into {@link stableF0Property}. */
+  private readonly pitchStabilizer = new PitchStabilizer();
   /**
    * Whether this screen is the one on display. Starts false: every screen's model
    * is built before joist shows a screen, so a source selected in the constructor
@@ -502,6 +514,8 @@ export class BaseAnalysisModel implements TModel {
     this.isFrozenProperty.reset();
     this.audioNoticeProperty.reset();
     this.f0Property.reset();
+    this.stableF0Property.reset();
+    this.pitchStabilizer.reset();
     this.f0ConfidenceProperty.reset();
     this.rmsLevelProperty.reset();
     this.hnrProperty.reset();
@@ -521,9 +535,9 @@ export class BaseAnalysisModel implements TModel {
    * Steps the model forward by dt seconds.
    * Called every animation frame by the Sim framework.
    *
-   * @param _dt - elapsed time in seconds since the last frame
+   * @param dt - elapsed time in seconds since the last frame
    */
-  public step(_dt: number): void {
+  public step(dt: number): void {
     const source = this.source;
     if (!source || this.isFrozenProperty.value || !source.isActive) {
       return;
@@ -541,8 +555,20 @@ export class BaseAnalysisModel implements TModel {
     this.hnrProperty.value = result.hnrDb;
     this.cppProperty.value = result.cppDb;
     this.formantsProperty.value = result.formants;
+    this.updateStablePitch(dt, result.pitch);
 
     this.frameProcessedEmitter.emit();
+  }
+
+  /**
+   * Feeds one frame's pitch estimate into the stabilizer behind
+   * {@link stableF0Property}. Frames the analyzer is not confident about are
+   * passed as unpitched rather than as a number: a guess from a noisy frame is
+   * exactly the kind of value that should not reach a readout.
+   */
+  private updateStablePitch(dt: number, pitch: AnalysisResult["pitch"]): void {
+    const voicedHz = pitch.confidence >= VOICED_CONFIDENCE_THRESHOLD ? pitch.frequencyHz : 0;
+    this.stableF0Property.value = this.pitchStabilizer.update(dt, voicedHz);
   }
 
   /** Builds the analyzer config from the current settings + source sample rate. */

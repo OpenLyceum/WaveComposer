@@ -59,7 +59,9 @@ export class SourceFilterDiagramNode extends Panel {
 
     const tuningIndicator = new Text(
       new DerivedProperty(
-        [model.f0Property, model.f1FrequencyProperty, physics.resonanceTuningStringProperty],
+        // Stabilized pitch, so the callout does not blink in and out with the
+        // per-frame estimate as it crosses the 60 Hz threshold.
+        [model.stableF0Property, model.f1FrequencyProperty, physics.resonanceTuningStringProperty],
         (f0, f1, text) => (f0 > 0 && f1 > 0 && Math.abs(f0 - f1) < 60 ? text : ""),
       ),
       {

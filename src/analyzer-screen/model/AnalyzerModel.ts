@@ -44,8 +44,14 @@ export class AnalyzerModel extends BaseAnalysisModel implements SpectrumChartMod
     this.pipeBoundaryProperty.reset();
   }
 
+  /**
+   * Fundamental the harmonic markers, mode numbers, and allowed-harmonic bands
+   * hang on. This is the stabilized pitch, not the per-frame estimate: the mode
+   * numbers are the ordinals of the multiples of F0, so a single octave-jumped
+   * frame would renumber the whole ladder for one animation frame.
+   */
   public getFundamentalHz(): number {
-    return this.f0Property.value;
+    return this.stableF0Property.value;
   }
 
   private syncPipeBoundaryForPreset(sourceId: string): void {

@@ -62,7 +62,7 @@ class FakeClipSource implements PlayableAudioSource {
     // no-op
   }
 
-  public getFrame(): boolean {
+  public getFrame(_buffer: Float32Array): boolean {
     return false;
   }
 }
@@ -121,5 +121,86 @@ describe("BaseAnalysisModel screen-activity gating", () => {
     model.suspendAudioForInactiveScreen();
     model.suspendAudioForInactiveScreen();
     expect(model.clip.stopCount).toBe(1);
+  });
+});
+
+/** A clip that fills every requested frame with a steady sine at {@link frequencyHz}. */
+class SineClipSource extends FakeClipSource {
+  /** Tone written into the next frame; change it to inject a rogue estimate. */
+  public frequencyHz = 220;
+  private phase = 0;
+
+  public override getFrame(buffer: Float32Array): boolean {
+    for (let i = 0; i < buffer.length; i++) {
+      buffer[i] = Math.sin(this.phase);
+      this.phase += (2 * Math.PI * this.frequencyHz) / this.sampleRate;
+    }
+    return true;
+  }
+}
+
+/** A listening screen model fed by a sine clip. */
+class SineScreenModel extends BaseAnalysisModel {
+  public readonly clip = new SineClipSource();
+
+  public constructor() {
+    super([], new WaveComposerPreferencesModel(), { includeMicrophone: false });
+    this.clip.resolveToActive = true;
+    this.registerAdditionalSource(CLIP_ID, this.clip);
+    this.audioSourceProperty.value = CLIP_ID;
+    this.resumeAudioForActiveScreen();
+  }
+
+  /** Steps `frames` frames of `dt` seconds each, as the sim's animation loop would. */
+  public stepFrames(frames: number, dt: number): void {
+    for (let i = 0; i < frames; i++) {
+      this.step(dt);
+    }
+  }
+}
+
+describe("BaseAnalysisModel stabilized pitch", () => {
+  let model: SineScreenModel;
+
+  beforeEach(() => {
+    model = new SineScreenModel();
+  });
+
+  it("tracks the analyzed pitch on every frame", () => {
+    model.stepFrames(1, 0.016);
+    expect(model.f0Property.value).toBeGreaterThan(200);
+    expect(model.f0Property.value).toBeLessThan(240);
+  });
+
+  it("holds the stabilized pitch until the slow update interval elapses", () => {
+    model.stepFrames(1, 0.1);
+    expect(model.stableF0Property.value).toBe(0);
+    model.stepFrames(1, 0.1);
+    expect(model.stableF0Property.value).toBeGreaterThan(200);
+    expect(model.stableF0Property.value).toBeLessThan(240);
+  });
+
+  it("outvotes a rogue frame instead of showing it", () => {
+    model.stepFrames(2, 0.1);
+    // The rogue frame is the one that closes the interval, so a readout that
+    // simply latched the newest estimate would show 440 Hz here.
+    model.clip.frequencyHz = 440;
+    model.stepFrames(1, 0.1);
+    expect(model.stableF0Property.value).toBeLessThan(300);
+  });
+
+  it("follows a pitch that is really sustained", () => {
+    model.stepFrames(60, 0.016);
+    model.clip.frequencyHz = 440;
+    model.stepFrames(120, 0.016);
+    expect(model.stableF0Property.value).toBeGreaterThan(400);
+    expect(model.stableF0Property.value).toBeLessThan(480);
+  });
+
+  it("clears the stabilized pitch when the model is reset", () => {
+    model.stepFrames(4, 0.1);
+    expect(model.stableF0Property.value).toBeGreaterThan(0);
+    model.reset();
+    expect(model.stableF0Property.value).toBe(0);
   });
 });

@@ -95,6 +95,7 @@ Actual specs:
 - `tests/common/model/dsp/FormantAnalyzer.test.ts`
 - `tests/common/model/dsp/LinearPredictor.test.ts`
 - `tests/common/model/dsp/NoteUtils.test.ts`
+- `tests/common/model/dsp/PitchStabilizer.test.ts`
 - `tests/common/model/dsp/PolynomialRootFinder.test.ts`
 - `tests/common/model/dsp/VoiceQuality.test.ts`
 - `tests/common/model/dsp/WindowFunction.test.ts`

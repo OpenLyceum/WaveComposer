@@ -9,6 +9,7 @@ import { DerivedProperty, type TReadOnlyProperty } from "scenerystack/axon";
 import { toFixed } from "scenerystack/dot";
 import { GridBox, type Node, Text, VBox } from "scenerystack/scenery";
 import { Panel } from "scenerystack/sun";
+import { noteNameFromFrequency } from "../../common/model/dsp/NoteUtils.js";
 import { StringManager } from "../../i18n/StringManager.js";
 import WaveComposerColors from "../../WaveComposerColors.js";
 import { WaveComposerConstants } from "../../WaveComposerConstants.js";
@@ -28,8 +29,17 @@ export class ComposerReadoutPanel extends Panel {
       partial.enabledProperty,
     ]);
 
-    const fundamentalValue = new DerivedProperty([model.f0Property], (f0) => (f0 > 0 ? `${Math.round(f0)} Hz` : EMPTY));
-    const noteValue = new DerivedProperty([model.noteNameProperty], (note) => note || EMPTY);
+    // The composition's own fundamental, not the analyzed one: here the user sets
+    // the partials, so the exact value is already known and follows the sliders
+    // with no detector lag.
+    const fundamentalValue = DerivedProperty.deriveAny(partialDependencies, () => {
+      const f0 = model.getFundamentalHz();
+      return f0 > 0 ? `${Math.round(f0)} Hz` : EMPTY;
+    });
+    const noteValue = DerivedProperty.deriveAny(
+      partialDependencies,
+      () => noteNameFromFrequency(model.getFundamentalHz()) || EMPTY,
+    );
     const beatValue = DerivedProperty.deriveAny(partialDependencies, () => {
       const beatHz = model.getBeatRateHz();
       return beatHz > 0 ? `${toFixed(beatHz, 1)} Hz` : EMPTY;

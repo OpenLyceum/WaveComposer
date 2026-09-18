@@ -2,10 +2,10 @@
  * AnalyzerReadoutPanel.ts
  *
  * Numeric measurement readouts for the music-analysis screen: pitch (F0), the
- * musical note it lands on with its cents deviation, and an input-level meter.
- * Each value binds to a model Property via a DerivedProperty so it updates live;
- * the panel itself holds no DSP state. Voice measurements (formants, HNR, CPP)
- * belong to the Voice & Vowels screen.
+ * musical note it lands on, and an input-level meter. Pitch and note bind to the
+ * model's slow readout pitch rather than the per-frame estimate, so they hold
+ * still long enough to read; the panel itself holds no DSP state. Voice
+ * measurements (formants, HNR, CPP) belong to the Voice & Vowels screen.
  */
 
 import { DerivedProperty, type TReadOnlyProperty } from "scenerystack/axon";
@@ -29,11 +29,10 @@ export class AnalyzerReadoutPanel extends Panel {
     // ── Numeric rows ──────────────────────────────────────────────────────────
     const hz = (n: number): string => (n > 0 ? `${Math.round(n)} Hz` : EMPTY);
 
-    const pitchValue = new DerivedProperty([model.f0Property], hz);
+    const pitchValue = new DerivedProperty([model.stableF0Property], hz);
     // A note name only means something once a pitch was actually found.
-    const noteValue = new DerivedProperty(
-      [model.f0Property, model.noteNameProperty, model.centsProperty],
-      (f0, note, cents) => (f0 > 0 && note ? `${note} ${cents >= 0 ? "+" : ""}${cents}¢` : EMPTY),
+    const noteValue = new DerivedProperty([model.stableF0Property, model.noteNameProperty], (f0, note) =>
+      f0 > 0 && note ? note : EMPTY,
     );
 
     const rows: Node[][] = [

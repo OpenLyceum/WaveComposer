@@ -18,7 +18,7 @@ src/common/model/
   ├─ dsp/
   │   ├─ Fft.ts, WindowFunction.ts, SignalUtils.ts, Decimator.ts
   │   ├─ LinearPredictor.ts, FormantAnalyzer.ts, Autocorrelation.ts
-  │   ├─ YinPitchDetector.ts, VoiceQuality.ts, NoteUtils.ts
+  │   ├─ YinPitchDetector.ts, PitchStabilizer.ts, VoiceQuality.ts, NoteUtils.ts
   │   └─ PolynomialRootFinder.ts, Complex.ts, types.ts
   └─ audio/
       ├─ AudioFrameSource.ts, SharedAudioContext.ts, AnalyserTap.ts

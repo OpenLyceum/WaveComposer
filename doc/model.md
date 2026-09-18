@@ -71,6 +71,15 @@ linearly or by octave, depending on the selected frequency scale.
 **Pitch (YIN).** The **YIN** autocorrelation-difference algorithm estimates f₀ and a confidence score;
 a frame is **voiced** when confidence exceeds ~0.5 and f₀ > 0.
 
+**Stabilized pitch.** Everything a learner *reads* — the numeric pitch and note, the harmonic markers,
+the mode numbers, the allowed-harmonic bands — uses a median-filtered f₀ over roughly the last
+four-tenths of a second, republished eight times a second and held unless the new value is more than
+about a quarter tone away and stays there. A real note change reaches the display in about a third of
+a second, fast enough to follow a melody played at speed. A single frame that latches onto a harmonic instead of
+the fundamental would otherwise renumber every mode label on the chart, since mode numbers are just
+the ordinals of the multiples of f₀. Displays that follow the signal frame by frame (spectrum,
+spectrogram, cepstrum) still use the raw per-frame estimate.
+
 **LPC formants.** For formant analysis the chain applies **pre-emphasis**, a confined-Gaussian window,
 **decimation** toward ~11 kHz, **autocorrelation**, and **Levinson–Durbin** to obtain LPC coefficients.
 The all-pole filter envelope peaks are **formants** (F1, F2, …) plotted on the vowel chart.

@@ -39,10 +39,13 @@ export class VoiceQualityReadout extends Panel {
     });
 
     const db = (n: number, valid: boolean): string => (valid ? `${toFixed(n, 1)} dB` : EMPTY);
-    const pitchValue = new DerivedProperty([model.f0Property], (f0) => (f0 > 0 ? `${Math.round(f0)} Hz` : EMPTY));
+    // Pitch and note read the model's slow readout pitch: the per-frame estimate
+    // changes faster than the numbers can be read. Cents deviation stays here -
+    // singing on pitch is the point of this screen - and rides the same clock.
+    const pitchValue = new DerivedProperty([model.stableF0Property], (f0) => (f0 > 0 ? `${Math.round(f0)} Hz` : EMPTY));
     const noteValue = new DerivedProperty(
-      [model.isVoicedProperty, model.noteNameProperty, model.centsProperty],
-      (voiced, note, cents) => (voiced && note ? `${note} ${cents >= 0 ? "+" : ""}${cents}¢` : EMPTY),
+      [model.stableF0Property, model.noteNameProperty, model.centsProperty],
+      (f0, note, cents) => (f0 > 0 && note ? `${note} ${cents >= 0 ? "+" : ""}${cents}¢` : EMPTY),
     );
     const hnrValue = new DerivedProperty([model.hnrProperty, model.isVoicedProperty], (v, voiced) => db(v, voiced));
     const cppValue = new DerivedProperty([model.cppProperty, model.isVoicedProperty], (v, voiced) => db(v, voiced));
