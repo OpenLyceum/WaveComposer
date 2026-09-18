@@ -67,6 +67,8 @@ export class ComposerControlPanel extends Panel {
           model.isAudioEnabledProperty,
           controls.playAudioStringProperty,
           a11yControls.playAudioStringProperty,
+          // Greyed out while sound is off globally, where checking it would do nothing.
+          model.isGlobalAudioEnabledProperty,
         ),
         makeCheckbox(model.isFrozenProperty, controls.freezeStringProperty, a11yControls.freezeStringProperty),
         divider(),
@@ -149,6 +151,7 @@ function makeCheckbox(
   property: Property<boolean>,
   labelProperty: TReadOnlyProperty<string>,
   accessibleName?: TReadOnlyProperty<string>,
+  enabledProperty?: TReadOnlyProperty<boolean>,
 ): Checkbox {
   return new Checkbox(property, controlText(labelProperty), {
     boxWidth: 16,
@@ -156,5 +159,6 @@ function makeCheckbox(
     checkboxColorBackground: WaveComposerColors.chartBackgroundColorProperty,
     tandem: Tandem.OPT_OUT,
     ...(accessibleName ? { accessibleName } : {}),
+    ...(enabledProperty ? { enabledProperty } : {}),
   });
 }

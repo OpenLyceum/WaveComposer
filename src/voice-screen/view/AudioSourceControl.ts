@@ -65,6 +65,8 @@ export class AudioSourceControl extends Panel {
         checkboxColorBackground: WaveComposerColors.chartBackgroundColorProperty,
         tandem: Tandem.OPT_OUT,
         accessibleName: a11yControls.playAudioStringProperty,
+        // Greyed out while sound is off globally, where checking it would do nothing.
+        enabledProperty: model.isGlobalAudioEnabledProperty,
       },
     );
 
