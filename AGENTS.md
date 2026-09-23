@@ -1,6 +1,6 @@
-# CLAUDE.md — Wave Composer
+# AGENTS.md — Wave Composer
 
-Sim-specific context for AI assistants. General SceneryStack guidance: [OpenLyceum/.github/CLAUDE.md](https://github.com/OpenLyceum/.github/blob/main/CLAUDE.md).
+Sim-specific context for AI assistants. General SceneryStack guidance: [OpenLyceum/.github/AGENTS.md](https://github.com/OpenLyceum/.github/blob/main/AGENTS.md).
 
 
 Upstream audio/spectrogram references live under `../Baseline/WaveComposer/` (OpenLyceum/Baseline); they are not part of the shipped sim.
