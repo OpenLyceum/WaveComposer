@@ -80,7 +80,7 @@ Fleet-standard Vitest layout:
 
 | Path | Purpose |
 |---|---|
-| `vitest.config.ts` | **`node` environment** (no DOM — pure DSP); `execArgv: ["--expose-gc"]`; no `setupFiles` |
+| `vitest.config.ts` | Fleet template: `happy-dom`, `setupFiles: ["./tests/setup.ts"]`, `execArgv: ["--expose-gc"]` |
 | `tests/**/*.test.ts` | Model/DSP unit tests — mirror `src/common/model/` under `tests/common/model/` |
 | `tests/memory-leak.test.ts` | WeakRef + `forceGC` dispose regression (fleet pattern) |
 
@@ -103,8 +103,6 @@ Actual specs:
 - `tests/common/model/dsp/YinPitchDetector.test.ts`
 - `tests/memory-leak.test.ts`
 
-Vitest environment: **`node`** — voice-analysis math has no DOM dependencies.
-
 Run `npm test`. CI runs the suite when a `test` script is present.
 
 ## Commands
@@ -114,7 +112,7 @@ npm run lint && npm run check && npm run build
 npm test
 ```
 
-`npm run release` intentionally skips `npm test` in some sims — append `&& npm test` before the version bump so a release cannot ship a failing suite.
+`npm run release` runs `npm test` before the version bump, and `src/init.ts` reads `version` from `package.json`, so the About dialog always matches the release.
 
 ## Development notes
 
