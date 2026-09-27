@@ -10,6 +10,7 @@
  */
 import { Range } from "scenerystack/dot";
 import { PhetFont } from "scenerystack/scenery-phet";
+import WaveComposerNamespace from "./WaveComposerNamespace.js";
 
 export const WaveComposerConstants = {
   /** Margin between screen edges and panels/buttons (layout-bounds units). */
@@ -62,3 +63,8 @@ export const WaveComposerConstants = {
 
 /** Corner radius shared by themed panels (px). */
 export const PANEL_CORNER_RADIUS = WaveComposerConstants.CORNER_RADIUS;
+
+WaveComposerNamespace.register("WaveComposerConstants", {
+  WaveComposerConstants,
+  PANEL_CORNER_RADIUS,
+});
