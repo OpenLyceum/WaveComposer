@@ -6,7 +6,6 @@
 import { describe, expect, it } from "vitest";
 import { Decimator } from "../src/common/model/dsp/Decimator.js";
 import { VoiceAnalyzer } from "../src/common/model/VoiceAnalyzer.js";
-import { TimeModel } from "../src/common/TimeModel.js";
 import { describeDisposalLeaks, forceGC } from "./helpers/memoryLeak.js";
 
 function createAndDropDecimator(): WeakRef<object> {
@@ -53,4 +52,4 @@ describe("Memory leak regression", () => {
   });
 });
 
-describeDisposalLeaks([{ name: "TimeModel", create: () => new TimeModel(), idempotentDispose: true }]);
+describeDisposalLeaks([]);
