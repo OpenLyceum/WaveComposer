@@ -42,7 +42,7 @@ init({
   // Allow the user to switch locale at runtime via the Preferences dialog.
   allowLocaleSwitching: true,
 
-  // Enables the sound subsystem (soundManager / tambo).
+  // Unmutes tambo at startup. Pair with audioOptions.supportsSound in src/main.ts.
   supportsSound: true,
 
   // Enables the Voicing (text-to-speech) feature.

@@ -82,9 +82,7 @@ onReadyToLaunch(() => {
         ],
       },
       audioOptions: {
-        // Adds the Preferences → Audio tab with a "Sounds" toggle.
-        // Requires supportsSound: true in src/init.ts. Register actual sounds
-        // with soundManager.addSoundGenerator(...) from scenerystack/tambo.
+        // Initializes tambo and the Audio preferences. Pair with supportsSound in src/init.ts.
         supportsSound: true,
         // Adds an "Extra Sounds" toggle (a second, optional sonification layer).
         // Requires supportsSound above.
