@@ -48,19 +48,21 @@ onReadyToLaunch(() => {
 
   const screens = [
     new ComposerScreen(composerModel, {
+      // The screen name Property updates automatically when the locale changes
       name: screenNames.composerStringProperty,
       tandem: Tandem.ROOT.createTandem("composerScreen"),
-      viewProperties: composerViewProperties,
       backgroundColorProperty: WaveComposerColors.backgroundColorProperty,
+      viewProperties: composerViewProperties,
     }),
     new AnalyzerScreen(analyzerModel, {
       // The screen name Property updates automatically when the locale changes
       name: screenNames.analyzerStringProperty,
       tandem: Tandem.ROOT.createTandem("analyzerScreen"),
-      viewProperties: analyzerViewProperties,
       backgroundColorProperty: WaveComposerColors.backgroundColorProperty,
+      viewProperties: analyzerViewProperties,
     }),
     new VoiceScreen(voiceModel, {
+      // The screen name Property updates automatically when the locale changes
       name: screenNames.voiceStringProperty,
       tandem: Tandem.ROOT.createTandem("voiceScreen"),
       backgroundColorProperty: WaveComposerColors.backgroundColorProperty,
@@ -81,6 +83,10 @@ onReadyToLaunch(() => {
           },
         ],
       },
+      localizationOptions: {
+        // Adds a language picker in Preferences → Language
+        supportsDynamicLocale: true,
+      },
       audioOptions: {
         // Initializes tambo and the Audio preferences. Pair with supportsSound in src/init.ts.
         supportsSound: true,
@@ -98,10 +104,6 @@ onReadyToLaunch(() => {
       inputOptions: {
         // Adds the Preferences → Input tab with a touchscreen gesture-control toggle.
         supportsGestureControl: true,
-      },
-      localizationOptions: {
-        // Adds a language picker in Preferences → Language
-        supportsDynamicLocale: true,
       },
     }),
 
