@@ -13,7 +13,8 @@ import { ComboBox } from "scenerystack/sun";
 import { Tandem } from "scenerystack/tandem";
 import { WINDOW_TYPE_VALUES, type WindowType } from "../common/model/dsp/WindowFunction.js";
 import { StringManager } from "../i18n/StringManager.js";
-import { FFT_SIZE_VALUES, LPC_ORDER_RANGE, type WaveComposerPreferencesModel } from "./WaveComposerPreferencesModel.js";
+import { FFT_SIZE_VALUES, LPC_ORDER_RANGE } from "./AnalysisConstants.js";
+import type { WaveComposerPreferencesModel } from "./WaveComposerPreferencesModel.js";
 
 function getSimTopLayer(): Node {
   const phetGlobals = globalThis as unknown as { phet: { joist: { sim: { topLayer: Node } } } };

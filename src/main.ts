@@ -38,7 +38,7 @@ onReadyToLaunch(() => {
   const stringManager = StringManager.getInstance();
   const screenNames = stringManager.getScreenNames();
 
-  const analysisPreferences = new WaveComposerPreferencesModel();
+  const analysisPreferences = new WaveComposerPreferencesModel(Tandem.ROOT.createTandem("preferences"));
   const analyzerModel = new AnalyzerModel(analysisPreferences);
   const composerModel = new ComposerModel(analysisPreferences);
   const voiceModel = new VoiceModel(analysisPreferences);
