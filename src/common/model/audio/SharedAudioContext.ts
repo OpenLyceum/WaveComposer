@@ -1,25 +1,62 @@
 /**
  * SharedAudioContext.ts
  *
- * One {@link AudioContext} per page, shared by file playback and synthetic Web
- * Audio sources so selecting through many presets never exhausts the browser's
- * per-page context budget.
+ * Speaker output for file playback and synthetic sources shares tambo's audio
+ * context and a single {@link SoundGenerator} registered with {@link soundManager}.
+ * Selecting through many presets never opens another context, and the master
+ * mute (navigation-bar sound, Preferences → Audio) silences this output.
+ * Analysis taps the graph before that gain, so the displays keep working muted.
  */
+import { phetAudioContext, SoundGenerator, soundManager } from "scenerystack/tambo";
+
 const DEFAULT_SAMPLE_RATE = 44100;
 
-let sharedContext: AudioContext | null = null;
-let gestureResumeInstalled = false;
+/**
+ * Routes monitoring audio through tambo's master gain. Constructed on first
+ * playback so importing this module does not touch the audio graph.
+ */
+class SharedMonitoringOutput extends SoundGenerator {
+  public constructor() {
+    super();
+    soundManager.addSoundGenerator(this);
+  }
 
-/** Sample rate without creating a context (avoids autoplay warnings before a user gesture). */
-export function getSharedSampleRate(): number {
-  return sharedContext?.sampleRate ?? DEFAULT_SAMPLE_RATE;
+  public get context(): AudioContext {
+    return this.audioContext;
+  }
+
+  /** Connect a source into the generator, ahead of the master gain. */
+  public connectSource(source: AudioNode): void {
+    source.connect(this.soundSourceDestination);
+  }
 }
 
-export function getSharedAudioContext(): AudioContext {
-  if (!sharedContext) {
-    sharedContext = new AudioContext();
+let output: SharedMonitoringOutput | null = null;
+let gestureResumeInstalled = false;
+
+function getOutput(): SharedMonitoringOutput {
+  if (!output) {
+    output = new SharedMonitoringOutput();
   }
-  return sharedContext;
+  return output;
+}
+
+/** Sample rate of tambo's context, without building the monitoring generator. */
+export function getSharedSampleRate(): number {
+  return phetAudioContext.sampleRate || DEFAULT_SAMPLE_RATE;
+}
+
+/** tambo's shared context. Creates the monitoring generator on first use. */
+export function getSharedAudioContext(): AudioContext {
+  return getOutput().context;
+}
+
+/**
+ * Sends `source` to the speakers through the registered SoundGenerator.
+ * Call again only after `source.disconnect()` — Web Audio connections add up.
+ */
+export function connectSharedMonitoringOutput(source: AudioNode): void {
+  getOutput().connectSource(source);
 }
 
 /**
@@ -51,7 +88,7 @@ function installGestureResume(context: AudioContext): void {
   }
 }
 
-/** Resumes the shared context after a user gesture (required by autoplay policy). */
+/** Resumes tambo's context after a user gesture (required by autoplay policy). */
 export async function resumeSharedAudioContext(): Promise<AudioContext> {
   const context = getSharedAudioContext();
   if (context.state === "suspended") {

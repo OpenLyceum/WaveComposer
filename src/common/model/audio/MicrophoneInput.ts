@@ -15,6 +15,7 @@
 import { AnalyserTap } from "./AnalyserTap.js";
 import type { AudioFrameSource } from "./AudioFrameSource.js";
 import type { MonitoredAudioSource } from "./MonitoredAudioSource.js";
+import { connectSharedMonitoringOutput, getSharedAudioContext } from "./SharedAudioContext.js";
 
 const DEFAULT_SAMPLE_RATE = 44100;
 const RECORD_BUFFER_SIZE = 4096;
@@ -121,7 +122,7 @@ export class MicrophoneInput implements AudioFrameSource, MonitoredAudioSource {
       }
       return;
     }
-    const audioContext = new AudioContext();
+    const audioContext = getSharedAudioContext();
     if (audioContext.state === "suspended") {
       await audioContext.resume();
     }
@@ -129,7 +130,6 @@ export class MicrophoneInput implements AudioFrameSource, MonitoredAudioSource {
       for (const track of stream.getTracks()) {
         track.stop();
       }
-      audioContext.close().catch(() => undefined);
       return;
     }
 
@@ -137,7 +137,7 @@ export class MicrophoneInput implements AudioFrameSource, MonitoredAudioSource {
     const sourceNode = audioContext.createMediaStreamSource(stream);
     sourceNode.connect(analyser);
     sourceNode.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    connectSharedMonitoringOutput(gainNode);
 
     this.stream = stream;
     this.audioContext = audioContext;
@@ -179,7 +179,7 @@ export class MicrophoneInput implements AudioFrameSource, MonitoredAudioSource {
     sink.gain.value = 0;
     sourceNode.connect(processor);
     processor.connect(sink);
-    sink.connect(audioContext.destination);
+    connectSharedMonitoringOutput(sink);
     this.recordProcessor = processor;
     this.recordSink = sink;
   }
@@ -235,16 +235,12 @@ export class MicrophoneInput implements AudioFrameSource, MonitoredAudioSource {
         track.stop();
       }
     }
-    const audioContext = this.audioContext;
     this.sourceNode = null;
     this.stream = null;
     this.audioContext = null;
     // Clear tap references so isActive returns false and readFrame returns false.
+    // The context belongs to tambo, so it stays open for the rest of the sim.
     this.tap.clear();
-    // Closing is asynchronous; we do not need to wait for it.
-    if (audioContext) {
-      audioContext.close().catch(() => undefined);
-    }
   }
 
   /** Updates the analyser FFT size (frame length). */

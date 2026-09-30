@@ -130,10 +130,9 @@ export class BaseAnalysisModel implements TModel {
   public readonly isGlobalAudioEnabledProperty: TReadOnlyProperty<boolean> = audioManager.audioAndSoundEnabledProperty;
   /**
    * Whether the active source actually reaches the speakers: the screen's own
-   * audio toggle AND the global audio state. This sim monitors raw Web Audio
-   * graphs instead of tambo SoundGenerators, so nothing mutes it for us - the
-   * global state has to be folded in explicitly or the sim keeps playing with
-   * sound switched off.
+   * audio toggle AND the global audio state. Speaker output is a tambo
+   * SoundGenerator, so the master mute applies; this gate still closes the tap
+   * gain so a frozen or locally muted source is silent without waiting on that ramp.
    */
   public readonly isMonitoringProperty: TReadOnlyProperty<boolean> = DerivedProperty.and([
     this.isAudioEnabledProperty,

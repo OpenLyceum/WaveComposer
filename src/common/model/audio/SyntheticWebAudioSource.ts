@@ -10,7 +10,7 @@ import { AnalyserTap } from "./AnalyserTap.js";
 import type { PlayableAudioSource } from "./AudioFrameSource.js";
 import type { MonitoredAudioSource } from "./MonitoredAudioSource.js";
 import type { PresetGenerator } from "./PresetFrameSource.js";
-import { getSharedSampleRate, resumeSharedAudioContext } from "./SharedAudioContext.js";
+import { connectSharedMonitoringOutput, getSharedSampleRate, resumeSharedAudioContext } from "./SharedAudioContext.js";
 
 const SCRIPT_BUFFER_SIZE = 2048;
 
@@ -86,7 +86,7 @@ export class SyntheticWebAudioSource implements PlayableAudioSource, MonitoredAu
     };
     scriptNode.connect(analyser);
     scriptNode.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    connectSharedMonitoringOutput(gainNode);
     this.scriptNode = scriptNode;
   }
 

@@ -8,14 +8,15 @@
  * uses — so the buffer plays at real time. When monitoring is enabled the same
  * signal is routed to a {@link GainNode} connected to `destination`.
  *
- * All buffer sources share one {@link AudioContext} (see {@link SharedAudioContext})
+ * All buffer sources share tambo's audio context (see {@link SharedAudioContext})
  * so cycling through many presets never exhausts the browser's per-page budget.
+ * Speaker output goes through a SoundGenerator, so the sim stays silent when muted.
  * Subclasses only provide the buffer via {@link resolveBuffer}.
  */
 import { AnalyserTap } from "./AnalyserTap.js";
 import type { PlayableAudioSource } from "./AudioFrameSource.js";
 import type { MonitoredAudioSource } from "./MonitoredAudioSource.js";
-import { getSharedSampleRate, resumeSharedAudioContext } from "./SharedAudioContext.js";
+import { connectSharedMonitoringOutput, getSharedSampleRate, resumeSharedAudioContext } from "./SharedAudioContext.js";
 
 export abstract class BufferPlaybackSource implements PlayableAudioSource, MonitoredAudioSource {
   public readonly isPlayable = true as const;
@@ -107,7 +108,7 @@ export abstract class BufferPlaybackSource implements PlayableAudioSource, Monit
     sourceNode.loop = true;
     sourceNode.connect(analyser);
     sourceNode.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    connectSharedMonitoringOutput(gainNode);
     sourceNode.start(0);
     this.sourceNode = sourceNode;
   }

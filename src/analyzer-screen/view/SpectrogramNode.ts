@@ -5,9 +5,9 @@
  * supplies the frequency (y) axis and labels; the intensity raster is drawn by an
  * inner Canvas-2D node.
  *
- * The raster is kept in an offscreen canvas used as a ring buffer: each analyzed
+ * The raster is a pixel ring buffer painted by {@link CanvasNode}: each analyzed
  * frame writes one vertical column (frequency bins → colormap), advancing a write
- * index. `paintCanvas` blits the ring in two slices so the newest column is always
+ * index. `paintCanvas` copies the ring in order so the newest column is always
  * at the right edge and older data scrolls left — no per-frame self-copy.
  *
  * The scroll speed sets how many columns a frame advances, so the same history
@@ -96,9 +96,12 @@ class SpectrogramRaster extends CanvasNode {
   private readonly viewHeight: number;
   private readonly cols: number;
   private readonly rows: number;
-  private readonly offscreen: HTMLCanvasElement;
-  private readonly offContext: CanvasRenderingContext2D;
-  private readonly columnImage: ImageData;
+  /** Ring buffer, column-major RGBA. Column `c` starts at `c * rows * 4`. */
+  private readonly history: Uint8ClampedArray;
+  /** One frequency column, RGBA, copied into {@link history} on each write. */
+  private readonly column: Uint8ClampedArray;
+  /** Destination image reused across paints. Created on the first paint. */
+  private viewImage: ImageData | null = null;
   private writeIndex = 0;
   /**
    * Fractional columns owed to the display. A speed below 1× writes a column only
@@ -124,13 +127,8 @@ class SpectrogramRaster extends CanvasNode {
     this.viewHeight = viewHeight;
     this.cols = WaveComposerConstants.SPECTROGRAM_HISTORY_COLUMNS;
     this.rows = Math.max(1, Math.round(viewHeight));
-
-    const offscreen = document.createElement("canvas");
-    offscreen.width = this.cols;
-    offscreen.height = this.rows;
-    this.offscreen = offscreen;
-    this.offContext = offscreen.getContext("2d") as CanvasRenderingContext2D;
-    this.columnImage = this.offContext.createImageData(1, this.rows);
+    this.history = new Uint8ClampedArray(this.cols * this.rows * 4);
+    this.column = new Uint8ClampedArray(this.rows * 4);
 
     this.clear();
 
@@ -145,11 +143,25 @@ class SpectrogramRaster extends CanvasNode {
 
   /** Resets the scrolling history to the background color. */
   public clear(): void {
-    this.offContext.fillStyle = WaveComposerColors.chartBackgroundColorProperty.value.toCSS();
-    this.offContext.fillRect(0, 0, this.cols, this.rows);
+    this.fillWithChartBackground(this.history);
     this.writeIndex = 0;
     this.columnCredit = 0;
     this.invalidatePaint();
+  }
+
+  /** Writes the current chart-background profile color through an RGBA buffer. */
+  private fillWithChartBackground(target: Uint8ClampedArray): void {
+    const color = WaveComposerColors.chartBackgroundColorProperty.value;
+    const red = color.red;
+    const green = color.green;
+    const blue = color.blue;
+    const alpha = Math.round(color.alpha * 255);
+    for (let i = 0; i < target.length; i += 4) {
+      target[i] = red;
+      target[i + 1] = green;
+      target[i + 2] = blue;
+      target[i + 3] = alpha;
+    }
   }
 
   private pushFrame(): void {
@@ -175,7 +187,6 @@ class SpectrogramRaster extends CanvasNode {
       scale,
     );
     const lut = getColormapLut(this.viewProperties.colormapProperty.value);
-    const data = this.columnImage.data;
     const dbSpan = WaveComposerConstants.SPECTROGRAM_MAX_DB - WaveComposerConstants.SPECTROGRAM_MIN_DB;
 
     for (let r = 0; r < this.rows; r++) {
@@ -193,30 +204,43 @@ class SpectrogramRaster extends CanvasNode {
       t = t < 0 ? 0 : t > 1 ? 1 : t;
       const lutIndex = Math.round(t * 255) * 3;
       const o = r * 4;
-      data[o] = lut[lutIndex] ?? 0;
-      data[o + 1] = lut[lutIndex + 1] ?? 0;
-      data[o + 2] = lut[lutIndex + 2] ?? 0;
-      data[o + 3] = 255;
+      this.column[o] = lut[lutIndex] ?? 0;
+      this.column[o + 1] = lut[lutIndex + 1] ?? 0;
+      this.column[o + 2] = lut[lutIndex + 2] ?? 0;
+      this.column[o + 3] = 255;
     }
     for (let c = 0; c < columnCount; c++) {
-      this.offContext.putImageData(this.columnImage, this.writeIndex, 0);
+      this.history.set(this.column, this.writeIndex * this.rows * 4);
       this.writeIndex = (this.writeIndex + 1) % this.cols;
     }
     this.invalidatePaint();
   }
 
   public override paintCanvas(context: CanvasRenderingContext2D): void {
-    context.imageSmoothingEnabled = false;
-    const scaleX = this.viewWidth / this.cols;
-    const wi = this.writeIndex;
-    const leftCount = this.cols - wi;
+    const destWidth = Math.max(1, Math.round(this.viewWidth));
+    const destHeight = Math.max(1, Math.round(this.viewHeight));
+    if (this.viewImage === null || this.viewImage.width !== destWidth || this.viewImage.height !== destHeight) {
+      this.viewImage = context.createImageData(destWidth, destHeight);
+    }
+    const dest = this.viewImage.data;
+    const scaleX = destWidth / this.cols;
+    const scaleY = destHeight / this.rows;
 
-    // Oldest columns [wi .. cols-1] on the left, then [0 .. wi-1] on the right.
-    if (leftCount > 0) {
-      context.drawImage(this.offscreen, wi, 0, leftCount, this.rows, 0, 0, leftCount * scaleX, this.viewHeight);
+    for (let y = 0; y < destHeight; y++) {
+      const srcRow = Math.min(this.rows - 1, Math.floor(y / scaleY));
+      for (let x = 0; x < destWidth; x++) {
+        // Oldest column (writeIndex) on the left, newest just left of it.
+        const unwrapped = Math.min(this.cols - 1, Math.floor(x / scaleX));
+        const srcCol = (this.writeIndex + unwrapped) % this.cols;
+        const src = (srcCol * this.rows + srcRow) * 4;
+        const dst = (y * destWidth + x) * 4;
+        dest[dst] = this.history[src] ?? 0;
+        dest[dst + 1] = this.history[src + 1] ?? 0;
+        dest[dst + 2] = this.history[src + 2] ?? 0;
+        dest[dst + 3] = this.history[src + 3] ?? 0;
+      }
     }
-    if (wi > 0) {
-      context.drawImage(this.offscreen, 0, 0, wi, this.rows, leftCount * scaleX, 0, wi * scaleX, this.viewHeight);
-    }
+    context.imageSmoothingEnabled = false;
+    context.putImageData(this.viewImage, 0, 0);
   }
 }
