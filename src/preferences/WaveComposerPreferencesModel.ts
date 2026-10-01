@@ -10,7 +10,7 @@
  */
 
 import { NumberProperty, Property } from "scenerystack/axon";
-import type { Tandem } from "scenerystack/tandem";
+import { StringIO, type Tandem } from "scenerystack/tandem";
 import { WINDOW_TYPE_VALUES, type WindowType } from "../common/model/dsp/WindowFunction.js";
 import WaveComposerNamespace from "../WaveComposerNamespace.js";
 import { FFT_SIZE_VALUES, LPC_ORDER_RANGE } from "./AnalysisConstants.js";
@@ -30,7 +30,11 @@ export class WaveComposerPreferencesModel {
       range: LPC_ORDER_RANGE,
       ...(tandem && { tandem: tandem.createTandem("lpcOrderProperty") }),
     });
+    // Plain string union, so it instruments as StringIO for PhET-iO with the
+    // union as validValues (NumberProperty infers its IO type; a generic
+    // Property over strings does not).
     this.windowTypeProperty = new Property<WindowType>(waveComposerQueryParameters.windowType as WindowType, {
+      phetioValueType: StringIO,
       validValues: [...WINDOW_TYPE_VALUES],
       ...(tandem && { tandem: tandem.createTandem("windowTypeProperty") }),
     });
