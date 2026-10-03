@@ -7,8 +7,9 @@
  *
  * The raster is a pixel ring buffer painted by {@link CanvasNode}: each analyzed
  * frame writes one vertical column (frequency bins → colormap), advancing a write
- * index. `paintCanvas` copies the ring in order so the newest column is always
- * at the right edge and older data scrolls left — no per-frame self-copy.
+ * index. `paintCanvas` copies the ring in order into a small offscreen canvas so
+ * the newest column is always at the right edge and older data scrolls left — no
+ * per-frame self-copy — then scales that canvas into the chart with `drawImage`.
  *
  * The scroll speed sets how many columns a frame advances, so the same history
  * can be stretched out for a slow look or hurried past for a fast one. Rows map
@@ -100,8 +101,16 @@ class SpectrogramRaster extends CanvasNode {
   private readonly history: Uint8ClampedArray;
   /** One frequency column, RGBA, copied into {@link history} on each write. */
   private readonly column: Uint8ClampedArray;
-  /** Destination image reused across paints. Created on the first paint. */
-  private viewImage: ImageData | null = null;
+  /**
+   * Offscreen canvas holding one pixel per history cell, scaled up when drawn. It
+   * must stay: putImageData ignores the canvas transform, so writing straight into
+   * the scenery context lands the raster at the top-left of the whole display
+   * instead of inside the chart. drawImage respects the transform.
+   */
+  private readonly sampleCanvas: HTMLCanvasElement;
+  private readonly sampleContext: CanvasRenderingContext2D | null;
+  /** Unwrapped, row-major copy of {@link history}, reused across paints. */
+  private readonly sampleImage: ImageData | null;
   private writeIndex = 0;
   /**
    * Fractional columns owed to the display. A speed below 1× writes a column only
@@ -129,6 +138,11 @@ class SpectrogramRaster extends CanvasNode {
     this.rows = Math.max(1, Math.round(viewHeight));
     this.history = new Uint8ClampedArray(this.cols * this.rows * 4);
     this.column = new Uint8ClampedArray(this.rows * 4);
+    this.sampleCanvas = document.createElement("canvas");
+    this.sampleCanvas.width = this.cols;
+    this.sampleCanvas.height = this.rows;
+    this.sampleContext = this.sampleCanvas.getContext("2d");
+    this.sampleImage = this.sampleContext?.createImageData(this.cols, this.rows) ?? null;
 
     this.clear();
 
@@ -217,30 +231,28 @@ class SpectrogramRaster extends CanvasNode {
   }
 
   public override paintCanvas(context: CanvasRenderingContext2D): void {
-    const destWidth = Math.max(1, Math.round(this.viewWidth));
-    const destHeight = Math.max(1, Math.round(this.viewHeight));
-    if (this.viewImage === null || this.viewImage.width !== destWidth || this.viewImage.height !== destHeight) {
-      this.viewImage = context.createImageData(destWidth, destHeight);
+    const sampleContext = this.sampleContext;
+    const sampleImage = this.sampleImage;
+    if (!(sampleContext && sampleImage)) {
+      return;
     }
-    const dest = this.viewImage.data;
-    const scaleX = destWidth / this.cols;
-    const scaleY = destHeight / this.rows;
-
-    for (let y = 0; y < destHeight; y++) {
-      const srcRow = Math.min(this.rows - 1, Math.floor(y / scaleY));
-      for (let x = 0; x < destWidth; x++) {
+    const dest = sampleImage.data;
+    for (let y = 0; y < this.rows; y++) {
+      for (let x = 0; x < this.cols; x++) {
         // Oldest column (writeIndex) on the left, newest just left of it.
-        const unwrapped = Math.min(this.cols - 1, Math.floor(x / scaleX));
-        const srcCol = (this.writeIndex + unwrapped) % this.cols;
-        const src = (srcCol * this.rows + srcRow) * 4;
-        const dst = (y * destWidth + x) * 4;
+        const srcCol = (this.writeIndex + x) % this.cols;
+        const src = (srcCol * this.rows + y) * 4;
+        const dst = (y * this.cols + x) * 4;
         dest[dst] = this.history[src] ?? 0;
         dest[dst + 1] = this.history[src + 1] ?? 0;
         dest[dst + 2] = this.history[src + 2] ?? 0;
         dest[dst + 3] = this.history[src + 3] ?? 0;
       }
     }
+    sampleContext.putImageData(sampleImage, 0, 0);
+
+    // Nearest-neighbour keeps each analyzed frame a crisp column.
     context.imageSmoothingEnabled = false;
-    context.putImageData(this.viewImage, 0, 0);
+    context.drawImage(this.sampleCanvas, 0, 0, this.viewWidth, this.viewHeight);
   }
 }
