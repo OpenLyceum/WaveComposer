@@ -185,6 +185,8 @@ export class BaseAnalysisModel implements TModel {
   public readonly frameProcessedEmitter = new Emitter();
 
   private readonly micInput: MicrophoneInput | null;
+  /** Invalidates pending microphone startup when capture is stopped. */
+  private listeningGeneration = 0;
   /** Every selectable source, keyed by source id ({@link AudioSource} or recording id). */
   private readonly sources: Map<string, AudioFrameSource>;
   /** Counts captured recordings so each gets a stable, ever-increasing ordinal. */
@@ -338,15 +340,22 @@ export class BaseAnalysisModel implements TModel {
       return;
     }
     this.audioSourceProperty.value = AudioSource.MICROPHONE;
+    const generation = this.listeningGeneration;
     try {
       await this.micInput.start();
     } catch (error) {
+      if (generation !== this.listeningGeneration) {
+        return;
+      }
       // Surface the failure instead of swallowing it, so the view can react.
       this.audioNoticeProperty.value =
         error instanceof DOMException && error.name === "NotAllowedError"
           ? AudioNotice.MICROPHONE_DENIED
           : AudioNotice.MICROPHONE_UNAVAILABLE;
       this.isListeningProperty.value = false;
+      return;
+    }
+    if (generation !== this.listeningGeneration || !this.micInput.isActive) {
       return;
     }
     if (!this.isScreenActive) {
@@ -410,6 +419,7 @@ export class BaseAnalysisModel implements TModel {
 
   /** Stops microphone capture and releases the device (discarding any active recording). */
   public stopListening(): void {
+    this.listeningGeneration++;
     if (this.isRecordingProperty.value) {
       this.micInput?.cancelRecording();
       this.isRecordingProperty.value = false;

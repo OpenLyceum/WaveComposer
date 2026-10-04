@@ -10,6 +10,7 @@
 import { BooleanProperty } from "scenerystack/axon";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlayableAudioSource } from "../../../src/common/model/audio/AudioFrameSource.js";
+import { MicrophoneInput } from "../../../src/common/model/audio/MicrophoneInput.js";
 import { BaseAnalysisModel } from "../../../src/common/model/BaseAnalysisModel.js";
 import { WaveComposerPreferencesModel } from "../../../src/preferences/WaveComposerPreferencesModel.js";
 
@@ -203,4 +204,29 @@ describe("BaseAnalysisModel stabilized pitch", () => {
     model.reset();
     expect(model.stableF0Property.value).toBe(0);
   });
+});
+
+it("does not report listening after a pending microphone start is canceled", async () => {
+  let resolveStart!: () => void;
+  const start = vi.spyOn(MicrophoneInput.prototype, "start").mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        resolveStart = resolve;
+      }),
+  );
+  const stop = vi.spyOn(MicrophoneInput.prototype, "stop").mockImplementation(() => undefined);
+  const active = vi.spyOn(MicrophoneInput.prototype, "isActive", "get").mockReturnValue(true);
+  try {
+    const model = new BaseAnalysisModel([], new WaveComposerPreferencesModel());
+    model.resumeAudioForActiveScreen();
+    const pending = model.startListening();
+    model.stopListening();
+    resolveStart();
+    await pending;
+    expect(model.isListeningProperty.value).toBe(false);
+  } finally {
+    start.mockRestore();
+    stop.mockRestore();
+    active.mockRestore();
+  }
 });
