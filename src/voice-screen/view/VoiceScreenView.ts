@@ -22,7 +22,7 @@ import { VowelPlotNode } from "./VowelPlotNode.js";
 const MARGIN = WaveComposerConstants.SCREEN_MARGIN;
 const SPACING = WaveComposerConstants.SPACING;
 const CHART_LEFT_GUTTER = 56;
-const VOWEL_PLOT_SIZE = 380;
+const VOWEL_PLOT_SIZE = 360;
 const CEPSTRUM_HEIGHT = 200;
 
 export type VoiceScreenViewOptions = ScreenViewOptions;
@@ -53,8 +53,10 @@ export class VoiceScreenView extends BaseAnalysisScreenView {
     this.addChild(sourceControl);
 
     // ── Cepstrum + readout (right) ──────────────────────────────────────────
+    // The panels below line up with the cepstrum's axis labels, which take up the
+    // gutter to the left of its plotting area, so the plot itself gets what is left.
     const rightLeft = vowelContainer.right + SPACING + CHART_LEFT_GUTTER;
-    const cepstrumWidth = this.layoutBounds.maxX - MARGIN - rightLeft;
+    const cepstrumWidth = this.layoutBounds.maxX - MARGIN - rightLeft - CHART_LEFT_GUTTER;
 
     const cepstrum = new CepstrumNode(model, { viewWidth: cepstrumWidth, viewHeight: CEPSTRUM_HEIGHT });
     const cepstrumContainer = new Node({ children: [cepstrum] });
