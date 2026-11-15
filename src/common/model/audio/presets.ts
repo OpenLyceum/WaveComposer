@@ -9,7 +9,7 @@
 import type { PresetGenerator } from "./PresetFrameSource.js";
 import { generateSine } from "./SyntheticFrameSource.js";
 import { SyntheticWebAudioSource } from "./SyntheticWebAudioSource.js";
-import { createSingingGenerator, createVoiceSyntheticGenerator } from "./voicePresets.js";
+import { createVoiceSyntheticGenerator } from "./voicePresets.js";
 
 const AMPLITUDE = 0.7;
 const NOTE_DURATION_S = 0.7;
@@ -55,14 +55,14 @@ function createMelodyHarmonicGenerator(
 }
 
 /** Bowed cello: dense decaying harmonic series. */
-export function createCelloGenerator(): PresetGenerator {
+function createCelloGenerator(): PresetGenerator {
   const harmonics = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const amplitudes = [1, 0.85, 0.7, 0.58, 0.48, 0.4, 0.33, 0.27, 0.22, 0.18];
   return createMelodyHarmonicGenerator(CELLO_MELODY_HZ, harmonics, amplitudes);
 }
 
 /** Oboe: odd-harmonic emphasis (closed cylindrical pipe). */
-export function createOboeGenerator(): PresetGenerator {
+function createOboeGenerator(): PresetGenerator {
   const harmonics = [1, 3, 5, 7, 9];
   const amplitudes = [1, 0.75, 0.5, 0.32, 0.2];
   return createMelodyHarmonicGenerator(OBOE_MELODY_HZ, harmonics, amplitudes);
@@ -74,7 +74,7 @@ const INSTRUMENT_SYNTHETIC_GENERATORS: Record<string, () => PresetGenerator> = {
 };
 
 /** Returns a synthesized generator for the given preset id, if one exists. */
-export function createSyntheticGenerator(presetId: string): PresetGenerator | undefined {
+function createSyntheticGenerator(presetId: string): PresetGenerator | undefined {
   return INSTRUMENT_SYNTHETIC_GENERATORS[presetId]?.() ?? createVoiceSyntheticGenerator(presetId);
 }
 
@@ -82,9 +82,4 @@ export function createSyntheticGenerator(presetId: string): PresetGenerator | un
 export function createSyntheticSource(presetId: string, fftSize: number): SyntheticWebAudioSource | undefined {
   const generate = createSyntheticGenerator(presetId);
   return generate ? new SyntheticWebAudioSource(generate, fftSize) : undefined;
-}
-
-/** @deprecated Use {@link createSyntheticSource}("singing", …). */
-export function createSingingSource(fftSize: number): SyntheticWebAudioSource {
-  return new SyntheticWebAudioSource(createSingingGenerator(), fftSize);
 }

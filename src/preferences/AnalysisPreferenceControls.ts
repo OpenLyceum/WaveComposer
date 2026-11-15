@@ -25,7 +25,7 @@ function descriptionText(stringProperty: TReadOnlyProperty<string>): Text {
   return new Text(stringProperty, PreferencesDialogConstants.CONTROL_DESCRIPTION_OPTIONS);
 }
 
-export function createFftSizePreferenceControl(fftSizeProperty: NumberProperty): Node {
+function createFftSizePreferenceControl(fftSizeProperty: NumberProperty): Node {
   const controls = StringManager.getInstance().getControlStrings();
   const preferences = StringManager.getInstance().getPreferencesStrings();
 
@@ -45,7 +45,7 @@ export function createFftSizePreferenceControl(fftSizeProperty: NumberProperty):
   });
 }
 
-export function createLpcOrderPreferenceControl(lpcOrderProperty: NumberProperty): Node {
+function createLpcOrderPreferenceControl(lpcOrderProperty: NumberProperty): Node {
   const controls = StringManager.getInstance().getControlStrings();
   const preferences = StringManager.getInstance().getPreferencesStrings();
 
@@ -70,7 +70,7 @@ export function createLpcOrderPreferenceControl(lpcOrderProperty: NumberProperty
   });
 }
 
-export function createWindowPreferenceControl(windowTypeProperty: Property<WindowType>): Node {
+function createWindowPreferenceControl(windowTypeProperty: Property<WindowType>): Node {
   const controls = StringManager.getInstance().getControlStrings();
   const preferences = StringManager.getInstance().getPreferencesStrings();
   const windowStrings = StringManager.getInstance().getWindowStrings();

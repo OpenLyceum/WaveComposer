@@ -1,15 +1,13 @@
 /**
  * SyntheticFrameSource.ts
  *
- * Deterministic signal generators plus an {@link AudioFrameSource} wrapper. Used
- * by the unit tests (known pitch / known formants / noise) and handy for manual
- * checks without a microphone.
+ * Deterministic signal generators used by the unit tests (known pitch / known
+ * formants / noise) and handy for manual checks without a microphone.
  *
  * The vowel generator drives a glottal impulse train through a cascade of
  * second-order resonators, so its poles sit exactly at the requested formant
  * frequencies — which is what LPC formant extraction should recover.
  */
-import type { AudioFrameSource } from "./AudioFrameSource.js";
 
 /** Small deterministic xorshift PRNG so noise-based tests are reproducible. */
 function createRandom(seed: number): () => number {
@@ -139,30 +137,4 @@ export function generateVowel(
     }
   }
   return out;
-}
-
-/**
- * Wraps a fixed pre-generated frame as an {@link AudioFrameSource} (repeats the
- * same frame each `getFrame`). Useful for manual smoke tests.
- */
-export class SyntheticFrameSource implements AudioFrameSource {
-  public readonly sampleRate: number;
-  public isActive = true;
-  private readonly frame: Float32Array;
-
-  public constructor(frame: Float32Array, sampleRate: number) {
-    this.frame = frame;
-    this.sampleRate = sampleRate;
-  }
-
-  public getFrame(out: Float32Array): boolean {
-    const count = Math.min(out.length, this.frame.length);
-    for (let i = 0; i < count; i++) {
-      out[i] = this.frame[i] ?? 0;
-    }
-    for (let i = count; i < out.length; i++) {
-      out[i] = 0;
-    }
-    return true;
-  }
 }

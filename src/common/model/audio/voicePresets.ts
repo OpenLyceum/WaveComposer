@@ -79,7 +79,7 @@ function plosiveGenerator(seed: number): PresetGenerator {
   };
 }
 
-export function createSingingGenerator(): PresetGenerator {
+function createSingingGenerator(): PresetGenerator {
   return (out, sampleRate, timeS) => {
     const noteIndex = Math.floor(timeS / SINGING_NOTE_S) % SINGING_MELODY_HZ.length;
     const baseF0 = SINGING_MELODY_HZ[noteIndex] ?? SINGING_MELODY_HZ[0] ?? 220;

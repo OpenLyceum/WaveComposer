@@ -61,10 +61,6 @@ export const WaveComposerConstants = {
   VOWEL_LABEL_FONT: new PhetFont({ size: 13, weight: "bold" }),
 } as const;
 
-/** Corner radius shared by themed panels (px). */
-export const PANEL_CORNER_RADIUS = WaveComposerConstants.CORNER_RADIUS;
-
 WaveComposerNamespace.register("WaveComposerConstants", {
   WaveComposerConstants,
-  PANEL_CORNER_RADIUS,
 });

@@ -27,8 +27,8 @@ export const FrequencyScaleValues = [FrequencyScale.LINEAR, FrequencyScale.LOGAR
 export const LOG_MIN_FREQUENCY_HZ = 20;
 
 /** Tick/grid spacing in transformed units: 1 kHz linear, one octave logarithmic. */
-export const LINEAR_TICK_SPACING_HZ = 1000;
-export const LOG_TICK_SPACING_OCTAVES = 1;
+const LINEAR_TICK_SPACING_HZ = 1000;
+const LOG_TICK_SPACING_OCTAVES = 1;
 
 /** Hz → plotting coordinate for the given scale. */
 export function toScaleCoordinate(frequencyHz: number, scale: FrequencyScale): number {

@@ -3,7 +3,7 @@
  *
  * Demo sources for the source ComboBox. The Analyzer screen lists
  * {@link INSTRUMENT_PRESET_CATALOG}; Voice & Vowels lists {@link VOICE_PRESET_CATALOG}.
- * {@link ALL_PRESET_CATALOG} is the union used for lookups and preset id typing.
+ * The merged catalog drives {@link PresetId} typing.
  */
 export type PresetCatalogEntry = {
   readonly id: string;
@@ -200,16 +200,9 @@ function mergeCatalogs(
 }
 
 /** Every preset id the model must instantiate (union of both screens). */
-export const ALL_PRESET_CATALOG: readonly PresetCatalogEntry[] = mergeCatalogs(
+const ALL_PRESET_CATALOG: readonly PresetCatalogEntry[] = mergeCatalogs(
   INSTRUMENT_PRESET_CATALOG,
   VOICE_PRESET_CATALOG,
 );
 
-/** @deprecated Use {@link INSTRUMENT_PRESET_CATALOG} or {@link VOICE_PRESET_CATALOG}. */
-export const PRESET_CATALOG = INSTRUMENT_PRESET_CATALOG;
-
 export type PresetId = (typeof ALL_PRESET_CATALOG)[number]["id"];
-
-export function findPresetEntry(presetId: string): PresetCatalogEntry | undefined {
-  return ALL_PRESET_CATALOG.find((entry) => entry.id === presetId);
-}
