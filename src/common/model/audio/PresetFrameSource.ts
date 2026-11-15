@@ -16,6 +16,7 @@ export type PresetGenerator = (out: Float32Array, sampleRate: number, timeS: num
 
 const DEFAULT_SAMPLE_RATE_HZ = 44100;
 
+/** @internal Exported for unit tests; not part of the application API. */
 export class PresetFrameSource implements AudioFrameSource {
   public readonly sampleRate: number;
   public readonly isActive = true;
