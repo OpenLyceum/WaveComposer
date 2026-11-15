@@ -73,7 +73,7 @@ Actual specs:
 - `tests/common/model/BaseAnalysisModel.test.ts`
 - `tests/common/model/VoiceAnalyzer.test.ts`
 - `tests/common/model/audio/ComposableFrameSource.test.ts`
-- `tests/common/model/audio/PresetFrameSource.test.ts`
+- `tests/common/model/audio/SyntheticWebAudioSource.test.ts`
 - `tests/common/model/dsp/Decimator.test.ts`
 - `tests/common/model/dsp/Fft.test.ts`
 - `tests/common/model/dsp/FormantAnalyzer.test.ts`

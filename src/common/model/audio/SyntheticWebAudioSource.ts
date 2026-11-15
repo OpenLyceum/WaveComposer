@@ -9,7 +9,7 @@
 import { AnalyserTap } from "./AnalyserTap.js";
 import type { PlayableAudioSource } from "./AudioFrameSource.js";
 import type { MonitoredAudioSource } from "./MonitoredAudioSource.js";
-import type { PresetGenerator } from "./PresetFrameSource.js";
+import type { PresetGenerator } from "./PresetGenerator.js";
 import { connectSharedMonitoringOutput, getSharedSampleRate, resumeSharedAudioContext } from "./SharedAudioContext.js";
 
 const SCRIPT_BUFFER_SIZE = 2048;

@@ -6,7 +6,7 @@
  * spectrum demos. Real recordings are preferred — see CREDITS.md and
  * scripts/download-preset-audio.sh.
  */
-import type { PresetGenerator } from "./PresetFrameSource.js";
+import type { PresetGenerator } from "./PresetGenerator.js";
 import { generateSine } from "./SyntheticFrameSource.js";
 import { SyntheticWebAudioSource } from "./SyntheticWebAudioSource.js";
 import { createVoiceSyntheticGenerator } from "./voicePresets.js";

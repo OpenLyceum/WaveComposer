@@ -2,10 +2,10 @@
  * ComposableFrameSource.ts
  *
  * Multi-sine wave composition: sums enabled partials with independent frequency,
- * amplitude, and phase. Phase stays continuous across frames via absolute time,
- * matching the PresetFrameSource pattern.
+ * amplitude, and phase. Phase stays continuous across frames via the absolute start time supplied
+ * by SyntheticWebAudioSource.
  */
-import type { PresetGenerator } from "./PresetFrameSource.js";
+import type { PresetGenerator } from "./PresetGenerator.js";
 import { SyntheticWebAudioSource } from "./SyntheticWebAudioSource.js";
 
 /** One sinusoidal partial in the composition. */

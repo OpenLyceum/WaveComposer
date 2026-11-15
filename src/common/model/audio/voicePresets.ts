@@ -5,7 +5,7 @@
  * targets follow typical adult-male values; consonants illustrate fricative noise,
  * plosive bursts, and voiced nasals described in the user-facing spectral guide.
  */
-import type { PresetGenerator } from "./PresetFrameSource.js";
+import type { PresetGenerator } from "./PresetGenerator.js";
 import { generateVowel, generateWhiteNoise } from "./SyntheticFrameSource.js";
 
 const AMPLITUDE = 0.7;
