@@ -15,7 +15,9 @@ import { type EmptySelfOptions, optionize } from "scenerystack/phet-core";
 import { VBox } from "scenerystack/scenery";
 import type { ScreenViewOptions } from "scenerystack/sim";
 import { BaseAnalysisScreenView } from "../../common/view/BaseAnalysisScreenView.js";
+import { SpectrumNode } from "../../common/view/SpectrumNode.js";
 import { WaveComposerScreenSummaryContent } from "../../common/view/WaveComposerScreenSummaryContent.js";
+import { WaveformNode } from "../../common/view/WaveformNode.js";
 import { StringManager } from "../../i18n/StringManager.js";
 import { WaveComposerConstants } from "../../WaveComposerConstants.js";
 import type { AnalyzerModel } from "../model/AnalyzerModel.js";
@@ -23,8 +25,6 @@ import { AnalyzerControlPanel } from "./AnalyzerControlPanel.js";
 import { AnalyzerReadoutPanel } from "./AnalyzerReadoutPanel.js";
 import type { AnalyzerViewProperties } from "./AnalyzerViewProperties.js";
 import { SpectrogramNode } from "./SpectrogramNode.js";
-import { SpectrumNode } from "./SpectrumNode.js";
-import { WaveformNode } from "./WaveformNode.js";
 
 const MARGIN = WaveComposerConstants.SCREEN_MARGIN;
 const SPACING = WaveComposerConstants.SPACING;

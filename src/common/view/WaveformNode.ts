@@ -14,13 +14,13 @@ import type { TReadOnlyProperty } from "scenerystack/axon";
 import { CanvasLinePlot, ChartCanvasNode, type ChartTransform } from "scenerystack/bamboo";
 import { Range, Vector2 } from "scenerystack/dot";
 import { type Color, Node } from "scenerystack/scenery";
-import type { BaseAnalysisModel } from "../../common/model/BaseAnalysisModel.js";
-import { hasDisplayWaveform } from "../../common/model/HarmonicChartModel.js";
-import { ChartFrame } from "../../common/view/ChartFrame.js";
-import type { ChartOverlayProperties } from "../../common/view/ChartOverlayProperties.js";
 import { StringManager } from "../../i18n/StringManager.js";
 import WaveComposerColors from "../../WaveComposerColors.js";
 import { WaveComposerConstants } from "../../WaveComposerConstants.js";
+import type { BaseAnalysisModel } from "../model/BaseAnalysisModel.js";
+import { hasDisplayWaveform } from "../model/HarmonicChartModel.js";
+import { ChartFrame } from "./ChartFrame.js";
+import type { ChartOverlayProperties } from "./ChartOverlayProperties.js";
 
 /** One constituent signal of the displayed waveform. */
 export interface WaveformComponentTrace {

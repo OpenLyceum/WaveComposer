@@ -15,10 +15,13 @@ import { CanvasLinePlot, ChartCanvasNode, type ChartTransform } from "scenerysta
 import { Range, Vector2 } from "scenerystack/dot";
 import { Shape } from "scenerystack/kite";
 import { Node, Path, Rectangle, Text } from "scenerystack/scenery";
-import type { SpectrumChartModel } from "../../common/model/HarmonicChartModel.js";
-import { isModeAllowed, PipeBoundary } from "../../common/model/PipeBoundary.js";
-import { ChartFrame } from "../../common/view/ChartFrame.js";
-import type { ChartOverlayProperties } from "../../common/view/ChartOverlayProperties.js";
+import { StringManager } from "../../i18n/StringManager.js";
+import WaveComposerColors from "../../WaveComposerColors.js";
+import { WaveComposerConstants } from "../../WaveComposerConstants.js";
+import type { SpectrumChartModel } from "../model/HarmonicChartModel.js";
+import { isModeAllowed, PipeBoundary } from "../model/PipeBoundary.js";
+import { ChartFrame } from "./ChartFrame.js";
+import type { ChartOverlayProperties } from "./ChartOverlayProperties.js";
 import {
   FrequencyScale,
   formatScaleTick,
@@ -26,10 +29,7 @@ import {
   scaleRangeFor,
   tickSpacingFor,
   toScaleCoordinate,
-} from "../../common/view/FrequencyScale.js";
-import { StringManager } from "../../i18n/StringManager.js";
-import WaveComposerColors from "../../WaveComposerColors.js";
-import { WaveComposerConstants } from "../../WaveComposerConstants.js";
+} from "./FrequencyScale.js";
 
 interface SpectrumNodeOptions {
   viewWidth: number;
