@@ -109,7 +109,7 @@ export class PitchStabilizer {
    * @param frequencyHz - that frame's F0 estimate, or 0 if the frame was unvoiced
    */
   public update(dtSeconds: number, frequencyHz: number): number {
-    this.samples.push(frequencyHz > 0 ? frequencyHz : 0);
+    this.samples.push(Math.max(frequencyHz, 0));
     this.sampleDurations.push(dtSeconds);
     this.windowDuration += dtSeconds;
     while (this.samples.length > 1 && this.windowDuration > this.windowSeconds) {

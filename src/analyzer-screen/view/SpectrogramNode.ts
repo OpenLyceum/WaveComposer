@@ -215,7 +215,7 @@ class SpectrogramRaster extends CanvasNode {
       }
       const db = analysis.powerSpectrumDb[bin] ?? WaveComposerConstants.SPECTROGRAM_MIN_DB;
       let t = (db - WaveComposerConstants.SPECTROGRAM_MIN_DB) / dbSpan;
-      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      t = t < 0 ? 0 : Math.min(t, 1);
       const lutIndex = Math.round(t * 255) * 3;
       const o = r * 4;
       this.column[o] = lut[lutIndex] ?? 0;
