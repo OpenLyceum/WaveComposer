@@ -56,7 +56,9 @@ deriving from each screen's model.
 
 ## Compliance carve-outs
 
-- **Nested constants:** DSP/layout constants beside analysis models under `src/common/model/` and `src/preferences/AnalysisConstants.ts` (multi-screen tool layout).
+- **AnalysisConstants separate module:** `src/preferences/AnalysisConstants.ts` stays beside the
+  preferences model/query-parameters so those files can share FFT/LPC defaults without a cycle
+  through root `WaveComposerConstants.ts` (which already covers fleet layout constants).
 - **PWA Workbox globPatterns:** also precaches `wav`/`mp3`/`ogg` so bundled preset audio clips work offline.
 
 ## Testing
