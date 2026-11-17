@@ -6,7 +6,7 @@
  *  - screen models: ComposerModel, AnalyzerModel and VoiceModel (each with a
  *    WaveComposerPreferencesModel, whose Properties the model links to — they are created
  *    and dropped together, as the sim keeps both for the whole run).
- * describeDisposalLeaks([]) at the bottom keeps the fleet harness sanity checks.
+ * describeDisposalLeaks([], { emptyOk: "no dispose() in src; custom forceGC coverage for DSP helpers and models below" }) at the bottom keeps the fleet harness sanity checks.
  */
 
 import { BooleanProperty } from "scenerystack/axon";
@@ -126,4 +126,6 @@ describe("Memory leak regression", () => {
 
 // Nothing in src/ has a dispose(), so there is no case to list. The custom suites above cover:
 // Decimator and VoiceAnalyzer (DSP), plus ComposerModel, AnalyzerModel and VoiceModel.
-describeDisposalLeaks([]);
+describeDisposalLeaks([], {
+  emptyOk: "no dispose() in src; custom forceGC coverage for DSP helpers and models below",
+});
