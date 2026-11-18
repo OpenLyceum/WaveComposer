@@ -6,12 +6,14 @@
  *  - screen models: ComposerModel, AnalyzerModel and VoiceModel (each with a
  *    WaveComposerPreferencesModel, whose Properties the model links to — they are created
  *    and dropped together, as the sim keeps both for the whole run).
+ *  - MicrophoneInput: a failed start (audio resume or graph setup) still stops the tracks.
  * describeDisposalLeaks([], { emptyOk: "no dispose() in src; custom forceGC coverage for DSP helpers and models below" }) at the bottom keeps the fleet harness sanity checks.
  */
 
 import { BooleanProperty } from "scenerystack/axon";
 import { describe, expect, it, vi } from "vitest";
 import { AnalyzerModel } from "../src/analyzer-screen/model/AnalyzerModel.js";
+import { MicrophoneInput } from "../src/common/model/audio/MicrophoneInput.js";
 import { Decimator } from "../src/common/model/dsp/Decimator.js";
 import { VoiceAnalyzer } from "../src/common/model/VoiceAnalyzer.js";
 import { ComposerModel } from "../src/composer-screen/model/ComposerModel.js";
@@ -59,6 +61,15 @@ vi.mock("scenerystack/sim", () => ({
       return new BooleanProperty(true);
     },
   },
+}));
+
+// MicrophoneInput's startup-failure checks drive a fake shared context. The other shared-context
+// helpers stay real; only the microphone path reads getSharedAudioContext().
+const sharedAudio = vi.hoisted(() => ({ context: null as unknown }));
+vi.mock("../src/common/model/audio/SharedAudioContext.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/common/model/audio/SharedAudioContext.js")>()),
+  getSharedAudioContext: () => sharedAudio.context,
+  connectSharedMonitoringOutput: () => undefined,
 }));
 
 type ScreenModel = ComposerModel | AnalyzerModel | VoiceModel;
@@ -121,6 +132,51 @@ describe("Memory leak regression", () => {
     await forceGC(refs);
     const survivors = refs.filter((r) => r.deref() !== undefined).length;
     expect(survivors).toBe(0);
+  });
+});
+
+describe("MicrophoneInput releases the microphone when startup fails", () => {
+  function fakeAudioNode(): { connect: () => void; disconnect: () => void; gain: { value: number } } {
+    return { connect: vi.fn(), disconnect: vi.fn(), gain: { value: 0 } };
+  }
+
+  /** Installs a getUserMedia whose single track records stop(), and a fake shared context. */
+  function setUp(context: Record<string, unknown>): { stopTrack: ReturnType<typeof vi.fn> } {
+    const stopTrack = vi.fn();
+    const stream = { getTracks: () => [{ stop: stopTrack }] };
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: vi.fn(async () => stream) },
+    });
+    sharedAudio.context = {
+      state: "running",
+      sampleRate: 44100,
+      createAnalyser: () => ({ ...fakeAudioNode(), fftSize: 0, smoothingTimeConstant: 0 }),
+      createGain: fakeAudioNode,
+      createMediaStreamSource: fakeAudioNode,
+      ...context,
+    };
+    return { stopTrack };
+  }
+
+  it("stops the tracks when the audio context fails to resume", async () => {
+    const { stopTrack } = setUp({ state: "suspended", resume: () => Promise.reject(new Error("resume")) });
+    const input = new MicrophoneInput(1024);
+    await expect(input.start()).rejects.toThrow("resume");
+    expect(stopTrack).toHaveBeenCalledTimes(1);
+    expect(input.isActive).toBe(false);
+  });
+
+  it("stops the tracks and clears the tap when graph setup throws", async () => {
+    const { stopTrack } = setUp({
+      createMediaStreamSource: () => {
+        throw new Error("graph");
+      },
+    });
+    const input = new MicrophoneInput(1024);
+    await expect(input.start()).rejects.toThrow("graph");
+    expect(stopTrack).toHaveBeenCalledTimes(1);
+    expect(input.isActive).toBe(false);
   });
 });
 

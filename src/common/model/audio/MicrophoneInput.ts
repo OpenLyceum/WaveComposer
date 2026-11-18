@@ -117,31 +117,46 @@ export class MicrophoneInput implements AudioFrameSource, MonitoredAudioSource {
     });
     // A stop() landed while we were awaiting permission — release and bail.
     if (generation !== this.startGeneration) {
-      for (const track of stream.getTracks()) {
-        track.stop();
-      }
-      return;
-    }
-    const audioContext = getSharedAudioContext();
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
-    }
-    if (generation !== this.startGeneration) {
-      for (const track of stream.getTracks()) {
-        track.stop();
-      }
+      MicrophoneInput.stopTracks(stream);
       return;
     }
 
-    const { analyser, gainNode } = this.tap.setup(audioContext);
-    const sourceNode = audioContext.createMediaStreamSource(stream);
-    sourceNode.connect(analyser);
-    sourceNode.connect(gainNode);
-    connectSharedMonitoringOutput(gainNode);
-
+    // Own each resource as soon as it exists, so a failure further on (audio resume,
+    // graph setup) still releases the microphone instead of leaving its tracks live.
     this.stream = stream;
-    this.audioContext = audioContext;
-    this.sourceNode = sourceNode;
+    try {
+      const audioContext = getSharedAudioContext();
+      this.audioContext = audioContext;
+      if (audioContext.state === "suspended") {
+        await audioContext.resume();
+      }
+      // stop() during the resume already released this.stream; this is the local copy.
+      if (generation !== this.startGeneration) {
+        MicrophoneInput.stopTracks(stream);
+        return;
+      }
+
+      const { analyser, gainNode } = this.tap.setup(audioContext);
+      const sourceNode = audioContext.createMediaStreamSource(stream);
+      this.sourceNode = sourceNode;
+      sourceNode.connect(analyser);
+      sourceNode.connect(gainNode);
+      connectSharedMonitoringOutput(gainNode);
+    } catch (error) {
+      if (generation === this.startGeneration) {
+        // Still the current session: tear down everything recorded so far.
+        this.stop();
+      } else {
+        MicrophoneInput.stopTracks(stream);
+      }
+      throw error;
+    }
+  }
+
+  private static stopTracks(stream: MediaStream): void {
+    for (const track of stream.getTracks()) {
+      track.stop();
+    }
   }
 
   public setMonitoringEnabled(enabled: boolean): void {
@@ -231,9 +246,7 @@ export class MicrophoneInput implements AudioFrameSource, MonitoredAudioSource {
     this.teardownRecording();
     this.sourceNode?.disconnect();
     if (this.stream) {
-      for (const track of this.stream.getTracks()) {
-        track.stop();
-      }
+      MicrophoneInput.stopTracks(this.stream);
     }
     this.sourceNode = null;
     this.stream = null;
