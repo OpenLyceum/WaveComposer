@@ -59,7 +59,6 @@ deriving from each screen's model.
 - **AnalysisConstants separate module:** `src/preferences/AnalysisConstants.ts` stays beside the
   preferences model/query-parameters so those files can share FFT/LPC defaults without a cycle
   through root `WaveComposerConstants.ts` (which already covers fleet layout constants).
-- **PWA Workbox globPatterns:** also precaches `wav`/`mp3`/`ogg` so bundled preset audio clips work offline.
 
 ## Testing
 
@@ -93,3 +92,4 @@ Run `npm test`. CI runs the suite when a `test` script is present.
 ## Development notes
 
 - When adding a feature, extend the appropriate screen model/view or `BaseAnalysisModel` if shared across screens.
+- `sim.config.json` lists `wav`, `mp3`, and `ogg` in `precacheExtensions` so bundled preset audio clips work offline.
