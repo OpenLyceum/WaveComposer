@@ -12,12 +12,7 @@ import { Tandem } from "scenerystack/tandem";
 import { COLORMAP_NAME_VALUES, type ColormapName } from "../common/view/Colormaps.js";
 import { StringManager } from "../i18n/StringManager.js";
 
-function getSimTopLayer(): Node {
-  const phetGlobals = globalThis as unknown as { phet: { joist: { sim: { topLayer: Node } } } };
-  return phetGlobals.phet.joist.sim.topLayer;
-}
-
-export function createColormapPreferenceControl(colormapProperty: Property<ColormapName>): Node {
+export function createColormapPreferenceControl(colormapProperty: Property<ColormapName>, listParent: Node): Node {
   const controls = StringManager.getInstance().getControlStrings();
   const colormapStrings = StringManager.getInstance().getColormapStrings();
 
@@ -33,7 +28,6 @@ export function createColormapPreferenceControl(colormapProperty: Property<Color
     createNode: () => new Text(colormapLabels[name], PreferencesDialogConstants.PANEL_SECTION_CONTENT_OPTIONS),
   }));
 
-  const listParent = getSimTopLayer();
   const comboBox = new ComboBox(colormapProperty, comboBoxItems, listParent, {
     tandem: Tandem.OPT_OUT,
   });

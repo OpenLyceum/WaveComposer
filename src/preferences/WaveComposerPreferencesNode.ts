@@ -7,7 +7,8 @@
  */
 import type { Property } from "scenerystack/axon";
 import { PreferencesDialogConstants } from "scenerystack/joist";
-import { VBox } from "scenerystack/scenery";
+import { getGlobal } from "scenerystack/phet-core";
+import { Node, VBox } from "scenerystack/scenery";
 import type { ColormapName } from "../common/view/Colormaps.js";
 import { createAnalysisPreferenceControls } from "./AnalysisPreferenceControls.js";
 import { createColormapPreferenceControl } from "./ColormapPreferenceControl.js";
@@ -15,10 +16,18 @@ import type { WaveComposerPreferencesModel } from "./WaveComposerPreferencesMode
 
 export class WaveComposerPreferencesNode extends VBox {
   public constructor(preferences: WaveComposerPreferencesModel, colormapProperty: Property<ColormapName>) {
+    const listParent: unknown = getGlobal("phet.joist.sim.topLayer");
+    if (!(listParent instanceof Node)) {
+      throw new Error("Preferences require the simulation's top layer");
+    }
+
     super({
       align: "left",
       spacing: PreferencesDialogConstants.CONTENT_SPACING,
-      children: [createAnalysisPreferenceControls(preferences), createColormapPreferenceControl(colormapProperty)],
+      children: [
+        createAnalysisPreferenceControls(preferences, listParent),
+        createColormapPreferenceControl(colormapProperty, listParent),
+      ],
     });
   }
 }

@@ -16,16 +16,11 @@ import { StringManager } from "../i18n/StringManager.js";
 import { FFT_SIZE_VALUES, LPC_ORDER_RANGE } from "./AnalysisConstants.js";
 import type { WaveComposerPreferencesModel } from "./WaveComposerPreferencesModel.js";
 
-function getSimTopLayer(): Node {
-  const phetGlobals = globalThis as unknown as { phet: { joist: { sim: { topLayer: Node } } } };
-  return phetGlobals.phet.joist.sim.topLayer;
-}
-
 function descriptionText(stringProperty: TReadOnlyProperty<string>): Text {
   return new Text(stringProperty, PreferencesDialogConstants.CONTROL_DESCRIPTION_OPTIONS);
 }
 
-function createFftSizePreferenceControl(fftSizeProperty: NumberProperty): Node {
+function createFftSizePreferenceControl(fftSizeProperty: NumberProperty, listParent: Node): Node {
   const controls = StringManager.getInstance().getControlStrings();
   const preferences = StringManager.getInstance().getPreferencesStrings();
 
@@ -34,7 +29,7 @@ function createFftSizePreferenceControl(fftSizeProperty: NumberProperty): Node {
     createNode: () => new Text(`${size}`, PreferencesDialogConstants.PANEL_SECTION_CONTENT_OPTIONS),
   }));
 
-  const comboBox = new ComboBox(fftSizeProperty, comboBoxItems, getSimTopLayer(), {
+  const comboBox = new ComboBox(fftSizeProperty, comboBoxItems, listParent, {
     tandem: Tandem.OPT_OUT,
   });
 
@@ -70,7 +65,7 @@ function createLpcOrderPreferenceControl(lpcOrderProperty: NumberProperty): Node
   });
 }
 
-function createWindowPreferenceControl(windowTypeProperty: Property<WindowType>): Node {
+function createWindowPreferenceControl(windowTypeProperty: Property<WindowType>, listParent: Node): Node {
   const controls = StringManager.getInstance().getControlStrings();
   const preferences = StringManager.getInstance().getPreferencesStrings();
   const windowStrings = StringManager.getInstance().getWindowStrings();
@@ -86,7 +81,7 @@ function createWindowPreferenceControl(windowTypeProperty: Property<WindowType>)
     createNode: () => new Text(windowLabels[type], PreferencesDialogConstants.PANEL_SECTION_CONTENT_OPTIONS),
   }));
 
-  const comboBox = new ComboBox(windowTypeProperty, comboBoxItems, getSimTopLayer(), {
+  const comboBox = new ComboBox(windowTypeProperty, comboBoxItems, listParent, {
     tandem: Tandem.OPT_OUT,
   });
 
@@ -97,14 +92,17 @@ function createWindowPreferenceControl(windowTypeProperty: Property<WindowType>)
   });
 }
 
-export function createAnalysisPreferenceControls(analysisPreferences: WaveComposerPreferencesModel): Node {
+export function createAnalysisPreferenceControls(
+  analysisPreferences: WaveComposerPreferencesModel,
+  listParent: Node,
+): Node {
   return new VBox({
     align: "left",
     spacing: PreferencesDialogConstants.CONTENT_SPACING,
     children: [
-      createFftSizePreferenceControl(analysisPreferences.fftSizeProperty),
+      createFftSizePreferenceControl(analysisPreferences.fftSizeProperty, listParent),
       createLpcOrderPreferenceControl(analysisPreferences.lpcOrderProperty),
-      createWindowPreferenceControl(analysisPreferences.windowTypeProperty),
+      createWindowPreferenceControl(analysisPreferences.windowTypeProperty, listParent),
     ],
   });
 }
