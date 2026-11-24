@@ -3,14 +3,14 @@
  *
  * View-only reactive state for the Analyzer screen — display preferences that
  * don't belong in the model (they don't affect the DSP): the spectrogram
- * colormap and scroll speed, the frequency-axis scale, which overlays are shown,
+ * scroll speed, the frequency-axis scale, which overlays are shown,
  * and the waveform time window. Kept in one place so the control panel and the
  * display nodes share the same Properties and Reset All can restore them.
  */
-import { BooleanProperty, NumberProperty, Property } from "scenerystack/axon";
+import { BooleanProperty, NumberProperty, Property, type TReadOnlyProperty } from "scenerystack/axon";
 import { Range } from "scenerystack/dot";
-import { COLORMAP_NAME_VALUES, type ColormapName } from "../../common/view/Colormaps.js";
 import { FrequencyScale, FrequencyScaleValues } from "../../common/view/FrequencyScale.js";
+import type { ColormapName } from "../../preferences/AnalysisConstants.js";
 import { WaveComposerConstants } from "../../WaveComposerConstants.js";
 
 /**
@@ -23,9 +23,7 @@ const DEFAULT_SCROLL_SPEED = 1;
 
 export class AnalyzerViewProperties {
   /** Spectrogram colormap. */
-  public readonly colormapProperty = new Property<ColormapName>("viridis", {
-    validValues: [...COLORMAP_NAME_VALUES],
-  });
+  public readonly colormapProperty: TReadOnlyProperty<ColormapName>;
   /** Linear Hz or per-octave logarithmic frequency axes. */
   public readonly frequencyScaleProperty = new Property<FrequencyScale>(FrequencyScale.LINEAR, {
     validValues: [...FrequencyScaleValues],
@@ -41,8 +39,11 @@ export class AnalyzerViewProperties {
     range: WaveComposerConstants.TIME_WINDOW_MS_RANGE,
   });
 
+  public constructor(colormapProperty: TReadOnlyProperty<ColormapName>) {
+    this.colormapProperty = colormapProperty;
+  }
+
   public reset(): void {
-    this.colormapProperty.reset();
     this.frequencyScaleProperty.reset();
     this.scrollSpeedProperty.reset();
     this.showHarmonicsProperty.reset();

@@ -29,11 +29,11 @@ export class AudioSourceControl extends Panel {
       listPosition: "above",
     });
 
-    const startStopLabel = new DerivedProperty(
+    const startStopLabelProperty = new DerivedProperty(
       [model.isListeningProperty, controls.startMicrophoneStringProperty, controls.stopMicrophoneStringProperty],
       (listening, start, stop) => (listening ? stop : start),
     );
-    const startStopButton = new TextPushButton(startStopLabel, {
+    const startStopButton = new TextPushButton(startStopLabelProperty, {
       font: WaveComposerConstants.CONTROL_FONT,
       baseColor: WaveComposerColors.buttonFillColorProperty,
       disabledColor: WaveComposerColors.buttonDisabledFillColorProperty,

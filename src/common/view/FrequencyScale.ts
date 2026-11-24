@@ -1,3 +1,4 @@
+import { roundSymmetric } from "scenerystack/dot";
 /**
  * FrequencyScale.ts
  *
@@ -62,8 +63,8 @@ export function scaleRangeFor(minFrequencyHz: number, maxFrequencyHz: number, sc
 export function formatScaleTick(coordinate: number, scale: FrequencyScale): string {
   const hz = fromScaleCoordinate(coordinate, scale);
   if (hz < 1000) {
-    return `${Math.round(hz)}`;
+    return `${roundSymmetric(hz)}`;
   }
   const k = hz / 1000;
-  return `${Number.isInteger(k) ? k : Math.round(k * 10) / 10}k`;
+  return `${Number.isInteger(k) ? k : roundSymmetric(k * 10) / 10}k`;
 }

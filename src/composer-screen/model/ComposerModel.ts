@@ -6,7 +6,7 @@
  * and standing-wave displays.
  */
 import { NumberProperty } from "scenerystack/axon";
-import { Range } from "scenerystack/dot";
+import { Range, roundSymmetric } from "scenerystack/dot";
 import { createComposableGenerator, createComposableSource } from "../../common/model/audio/ComposableFrameSource.js";
 import { BaseAnalysisModel } from "../../common/model/BaseAnalysisModel.js";
 import { COMPOSE_SOURCE_ID, CompositionState } from "../../common/model/CompositionState.js";
@@ -94,7 +94,7 @@ export class ComposerModel extends BaseAnalysisModel implements HarmonicChartMod
         continue;
       }
       const ratio = frequency / fundamental;
-      const modeNumber = Math.round(ratio);
+      const modeNumber = roundSymmetric(ratio);
       // A non-integer ratio (detuned partial) or two partials landing on the
       // same mode means this is not a harmonic series — hide the strip.
       if (Math.abs(ratio - modeNumber) > HARMONIC_RATIO_TOLERANCE * modeNumber || usedModeNumbers.has(modeNumber)) {

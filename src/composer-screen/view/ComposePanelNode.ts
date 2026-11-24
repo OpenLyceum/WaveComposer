@@ -11,7 +11,7 @@
  * is heard.
  */
 import { PatternStringProperty, type TReadOnlyProperty } from "scenerystack/axon";
-import { Range } from "scenerystack/dot";
+import { Range, roundSymmetric } from "scenerystack/dot";
 import { AlignGroup, Circle, HBox, Line, type Node, Text, VBox } from "scenerystack/scenery";
 import { Checkbox, ComboBox, Panel } from "scenerystack/sun";
 import { Tandem } from "scenerystack/tandem";
@@ -128,7 +128,9 @@ export class ComposePanelNode extends Panel {
             rowWidth: ROW_WIDTH,
             delta: PHASE_STEP_RAD,
             accessibleName: new PatternStringProperty(a11yControls.partialPhaseStringProperty, patternValues),
-            numberDisplayOptions: { numberFormatter: (radians) => `${Math.round(radians * DEGREES_PER_RADIAN)}\u00b0` },
+            numberDisplayOptions: {
+              numberFormatter: (radians) => `${roundSymmetric(radians * DEGREES_PER_RADIAN)}\u00b0`,
+            },
             sliderOptions: {
               keyboardStep: PHASE_STEP_RAD,
               shiftKeyboardStep: PHASE_STEP_RAD / 3,

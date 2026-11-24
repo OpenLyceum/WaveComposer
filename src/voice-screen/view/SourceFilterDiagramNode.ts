@@ -5,6 +5,7 @@
  * drives a vocal-tract resonator whose peaks (F1–F3) shape the output spectrum.
  */
 import { DerivedProperty, type TReadOnlyProperty } from "scenerystack/axon";
+import { roundSymmetric } from "scenerystack/dot";
 import { HBox, type Node, Rectangle, Text, VBox } from "scenerystack/scenery";
 import { ArrowNode } from "scenerystack/scenery-phet";
 import { Panel } from "scenerystack/sun";
@@ -62,7 +63,7 @@ export class SourceFilterDiagramNode extends Panel {
         // Stabilized pitch, so the callout does not blink in and out with the
         // per-frame estimate as it crosses the 60 Hz threshold.
         [model.stableF0Property, model.f1FrequencyProperty, physics.resonanceTuningStringProperty],
-        (f0, f1, text) => (f0 > 0 && f1 > 0 && Math.abs(f0 - f1) < 60 ? text : ""),
+        (f0, f1, textProperty) => (f0 > 0 && f1 > 0 && Math.abs(f0 - f1) < 60 ? textProperty : ""),
       ),
       {
         font: WaveComposerConstants.LABEL_FONT,
@@ -119,8 +120,8 @@ function formantResonanceLabel(
   nameProperty: TReadOnlyProperty<string>,
   frequencyProperty: TReadOnlyProperty<number>,
 ): Node {
-  const text = new DerivedProperty([nameProperty, frequencyProperty], (name, hz) =>
-    hz > 0 ? `${name} ${Math.round(hz)}` : name,
+  const textProperty = new DerivedProperty([nameProperty, frequencyProperty], (name, hz) =>
+    hz > 0 ? `${name} ${roundSymmetric(hz)}` : name,
   );
-  return new Text(text, { font: WaveComposerConstants.LABEL_FONT, fill: WaveComposerColors.textColorProperty });
+  return new Text(textProperty, { font: WaveComposerConstants.LABEL_FONT, fill: WaveComposerColors.textColorProperty });
 }
