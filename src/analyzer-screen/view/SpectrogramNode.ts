@@ -16,7 +16,7 @@
  * to frequency through the selected {@link FrequencyScale}: evenly spaced in Hz,
  * or one octave per equal slice of height.
  */
-import { Bounds2, Range } from "scenerystack/dot";
+import { Bounds2, Range, roundSymmetric } from "scenerystack/dot";
 import { type EmptySelfOptions, optionize } from "scenerystack/phet-core";
 import { CanvasNode, type CanvasNodeOptions, Node, Text } from "scenerystack/scenery";
 import { ChartFrame } from "../../common/view/ChartFrame.js";
@@ -135,7 +135,7 @@ class SpectrogramRaster extends CanvasNode {
     this.viewWidth = viewWidth;
     this.viewHeight = viewHeight;
     this.cols = WaveComposerConstants.SPECTROGRAM_HISTORY_COLUMNS;
-    this.rows = Math.max(1, Math.round(viewHeight));
+    this.rows = Math.max(1, roundSymmetric(viewHeight));
     this.history = new Uint8ClampedArray(this.cols * this.rows * 4);
     this.column = new Uint8ClampedArray(this.rows * 4);
     this.sampleCanvas = document.createElement("canvas");
@@ -169,7 +169,7 @@ class SpectrogramRaster extends CanvasNode {
     const red = color.red;
     const green = color.green;
     const blue = color.blue;
-    const alpha = Math.round(color.alpha * 255);
+    const alpha = roundSymmetric(color.alpha * 255);
     for (let i = 0; i < target.length; i += 4) {
       target[i] = red;
       target[i + 1] = green;
@@ -207,7 +207,7 @@ class SpectrogramRaster extends CanvasNode {
       // Row 0 is the top of the display = highest frequency.
       const frac = this.rows > 1 ? 1 - r / (this.rows - 1) : 0;
       const freq = fromScaleCoordinate(yMin + frac * (yMax - yMin), scale);
-      let bin = Math.round((freq * fftSize) / sampleRate);
+      let bin = roundSymmetric((freq * fftSize) / sampleRate);
       if (bin < 0) {
         bin = 0;
       } else if (bin >= half) {
@@ -216,7 +216,7 @@ class SpectrogramRaster extends CanvasNode {
       const db = analysis.powerSpectrumDb[bin] ?? WaveComposerConstants.SPECTROGRAM_MIN_DB;
       let t = (db - WaveComposerConstants.SPECTROGRAM_MIN_DB) / dbSpan;
       t = t < 0 ? 0 : Math.min(t, 1);
-      const lutIndex = Math.round(t * 255) * 3;
+      const lutIndex = roundSymmetric(t * 255) * 3;
       const o = r * 4;
       this.column[o] = lut[lutIndex] ?? 0;
       this.column[o + 1] = lut[lutIndex + 1] ?? 0;

@@ -144,11 +144,11 @@ export function createSourceSelector(
     maxWidth: CAPTION_MAX_WIDTH,
   });
 
-  const recordLabel = new DerivedProperty(
+  const recordLabelProperty = new DerivedProperty(
     [model.isRecordingProperty, controls.recordStringProperty, controls.stopRecordingStringProperty],
     (recording, record, stop) => (recording ? stop : record),
   );
-  const recordButton = new TextPushButton(recordLabel, {
+  const recordButton = new TextPushButton(recordLabelProperty, {
     font: WaveComposerConstants.CONTROL_FONT,
     baseColor: WaveComposerColors.buttonFillColorProperty,
     textFill: WaveComposerColors.textColorProperty,

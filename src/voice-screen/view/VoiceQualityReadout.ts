@@ -7,7 +7,7 @@
  */
 
 import { DerivedProperty, type TReadOnlyProperty } from "scenerystack/axon";
-import { toFixed } from "scenerystack/dot";
+import { roundSymmetric, toFixed } from "scenerystack/dot";
 import { Circle, type Color, GridBox, HBox, type Node, Text, VBox } from "scenerystack/scenery";
 import { Panel } from "scenerystack/sun";
 import { StringManager } from "../../i18n/StringManager.js";
@@ -22,19 +22,22 @@ export class VoiceQualityReadout extends Panel {
     const readout = StringManager.getInstance().getReadoutStrings();
     const panelStrings = StringManager.getInstance().getPanelStrings();
 
-    const voicedFill = new DerivedProperty(
+    const voicedFillProperty = new DerivedProperty(
       [model.isVoicedProperty, WaveComposerColors.voicedColorProperty, WaveComposerColors.unvoicedColorProperty],
       (voiced, on, off): Color => (voiced ? on : off),
     );
-    const voicedText = new DerivedProperty(
+    const voicedTextProperty = new DerivedProperty(
       [model.isVoicedProperty, readout.voicedStringProperty, readout.unvoicedStringProperty],
       (voiced, on, off) => (voiced ? on : off),
     );
     const indicator = new HBox({
       spacing: 6,
       children: [
-        new Circle(7, { fill: voicedFill }),
-        new Text(voicedText, { font: WaveComposerConstants.LABEL_FONT, fill: WaveComposerColors.textColorProperty }),
+        new Circle(7, { fill: voicedFillProperty }),
+        new Text(voicedTextProperty, {
+          font: WaveComposerConstants.LABEL_FONT,
+          fill: WaveComposerColors.textColorProperty,
+        }),
       ],
     });
 
@@ -42,23 +45,29 @@ export class VoiceQualityReadout extends Panel {
     // Pitch and note read the model's slow readout pitch: the per-frame estimate
     // changes faster than the numbers can be read. Cents deviation stays here -
     // singing on pitch is the point of this screen - and rides the same clock.
-    const pitchValue = new DerivedProperty([model.stableF0Property], (f0) => (f0 > 0 ? `${Math.round(f0)} Hz` : EMPTY));
-    const noteValue = new DerivedProperty(
+    const pitchValueProperty = new DerivedProperty([model.stableF0Property], (f0) =>
+      f0 > 0 ? `${roundSymmetric(f0)} Hz` : EMPTY,
+    );
+    const noteValueProperty = new DerivedProperty(
       [model.stableF0Property, model.noteNameProperty, model.centsProperty],
       (f0, note, cents) => (f0 > 0 && note ? `${note} ${cents >= 0 ? "+" : ""}${cents}¢` : EMPTY),
     );
-    const hnrValue = new DerivedProperty([model.hnrProperty, model.isVoicedProperty], (v, voiced) => db(v, voiced));
-    const cppValue = new DerivedProperty([model.cppProperty, model.isVoicedProperty], (v, voiced) => db(v, voiced));
+    const hnrValueProperty = new DerivedProperty([model.hnrProperty, model.isVoicedProperty], (v, voiced) =>
+      db(v, voiced),
+    );
+    const cppValueProperty = new DerivedProperty([model.cppProperty, model.isVoicedProperty], (v, voiced) =>
+      db(v, voiced),
+    );
 
     const grid = new GridBox({
       xSpacing: 16,
       ySpacing: 7,
       xAlign: "left",
       rows: [
-        [label(readout.pitchStringProperty), value(pitchValue)],
-        [label(readout.noteStringProperty), value(noteValue)],
-        [label(readout.hnrStringProperty), value(hnrValue)],
-        [label(readout.cppStringProperty), value(cppValue)],
+        [label(readout.pitchStringProperty), value(pitchValueProperty)],
+        [label(readout.noteStringProperty), value(noteValueProperty)],
+        [label(readout.hnrStringProperty), value(hnrValueProperty)],
+        [label(readout.cppStringProperty), value(cppValueProperty)],
       ],
     });
 

@@ -6,7 +6,7 @@
  */
 
 import { DerivedProperty, type TReadOnlyProperty } from "scenerystack/axon";
-import { toFixed } from "scenerystack/dot";
+import { roundSymmetric, toFixed } from "scenerystack/dot";
 import { GridBox, type Node, Text, VBox } from "scenerystack/scenery";
 import { Panel } from "scenerystack/sun";
 import { noteNameFromFrequency } from "../../common/model/dsp/NoteUtils.js";
@@ -34,7 +34,7 @@ export class ComposerReadoutPanel extends Panel {
     // with no detector lag.
     const fundamentalValue = DerivedProperty.deriveAny(partialDependencies, () => {
       const f0 = model.getFundamentalHz();
-      return f0 > 0 ? `${Math.round(f0)} Hz` : EMPTY;
+      return f0 > 0 ? `${roundSymmetric(f0)} Hz` : EMPTY;
     });
     const noteValue = DerivedProperty.deriveAny(
       partialDependencies,

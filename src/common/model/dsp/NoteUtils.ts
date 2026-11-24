@@ -1,3 +1,5 @@
+import { roundSymmetric } from "scenerystack/dot";
+
 /**
  * NoteUtils.ts
  *
@@ -31,7 +33,7 @@ export function midiToFrequency(midi: number): number {
  * @internal Exported for unit tests; not part of the application API.
  */
 export function midiToNoteName(midi: number): string {
-  const rounded = Math.round(midi);
+  const rounded = roundSymmetric(midi);
   const index = ((rounded % 12) + 12) % 12;
   const octave = Math.floor(rounded / 12) - 1;
   return `${NOTE_NAMES[index] ?? ""}${octave}`;
@@ -40,7 +42,7 @@ export function midiToNoteName(midi: number): string {
 /** Signed deviation from the nearest equal-tempered note, in cents (±50). */
 export function centsFromFrequency(frequencyHz: number): number {
   const midi = frequencyToMidi(frequencyHz);
-  return Math.round((midi - Math.round(midi)) * 100);
+  return roundSymmetric((midi - roundSymmetric(midi)) * 100);
 }
 
 /** Note name with octave for a frequency, or "" for non-positive input. */

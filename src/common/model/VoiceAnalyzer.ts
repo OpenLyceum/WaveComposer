@@ -14,6 +14,8 @@
  *             ─▶ pre-emphasis ─▶ window ─▶ autocorr ─▶ LPC ─▶ formants + envelope
  *             ─▶ autocorr ─▶ HNR
  */
+
+import { roundSymmetric } from "scenerystack/dot";
 import { autocorrelate } from "./dsp/Autocorrelation.js";
 import { Decimator } from "./dsp/Decimator.js";
 import { Fft } from "./dsp/Fft.js";
@@ -76,7 +78,7 @@ const FORMANT_MIN_RADIUS = 0.6;
 
 /** Integer decimation factor that brings `sampleRate` closest to ~11 kHz. */
 function formantDecimation(sampleRate: number): number {
-  return Math.max(1, Math.round(sampleRate / FORMANT_LPC_RATE_HZ));
+  return Math.max(1, roundSymmetric(sampleRate / FORMANT_LPC_RATE_HZ));
 }
 
 export class VoiceAnalyzer {

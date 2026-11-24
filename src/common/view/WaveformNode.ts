@@ -12,7 +12,7 @@
  */
 import type { TReadOnlyProperty } from "scenerystack/axon";
 import { CanvasLinePlot, ChartCanvasNode, type ChartTransform } from "scenerystack/bamboo";
-import { Range, Vector2 } from "scenerystack/dot";
+import { Range, roundSymmetric, Vector2 } from "scenerystack/dot";
 import { type Color, Node } from "scenerystack/scenery";
 import { StringManager } from "../../i18n/StringManager.js";
 import WaveComposerColors from "../../WaveComposerColors.js";
@@ -60,7 +60,7 @@ export class WaveformNode extends Node {
     super();
     this.model = model;
     this.viewProperties = viewProperties;
-    this.maxPoints = Math.max(2, Math.round(options.viewWidth));
+    this.maxPoints = Math.max(2, roundSymmetric(options.viewWidth));
     const axisStrings = StringManager.getInstance().getAxisStrings();
 
     const frame = new ChartFrame({
@@ -119,7 +119,7 @@ export class WaveformNode extends Node {
   private update(): void {
     const sampleRate = this.model.sampleRateProperty.value;
     const windowMs = this.viewProperties.timeWindowMsProperty.value;
-    const windowSamples = Math.max(2, Math.round((windowMs / 1000) * sampleRate));
+    const windowSamples = Math.max(2, roundSymmetric((windowMs / 1000) * sampleRate));
 
     let waveform: Float32Array;
     let sampleCount: number;

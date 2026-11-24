@@ -9,6 +9,7 @@
  */
 
 import { DerivedProperty, type TReadOnlyProperty } from "scenerystack/axon";
+import { roundSymmetric } from "scenerystack/dot";
 import { GridBox, HBox, Node, Rectangle, Text, VBox } from "scenerystack/scenery";
 import { Panel } from "scenerystack/sun";
 import { StringManager } from "../../i18n/StringManager.js";
@@ -27,17 +28,17 @@ export class AnalyzerReadoutPanel extends Panel {
     const panelStrings = StringManager.getInstance().getPanelStrings();
 
     // ── Numeric rows ──────────────────────────────────────────────────────────
-    const hz = (n: number): string => (n > 0 ? `${Math.round(n)} Hz` : EMPTY);
+    const hz = (n: number): string => (n > 0 ? `${roundSymmetric(n)} Hz` : EMPTY);
 
-    const pitchValue = new DerivedProperty([model.stableF0Property], hz);
+    const pitchValueProperty = new DerivedProperty([model.stableF0Property], hz);
     // A note name only means something once a pitch was actually found.
-    const noteValue = new DerivedProperty([model.stableF0Property, model.noteNameProperty], (f0, note) =>
+    const noteValueProperty = new DerivedProperty([model.stableF0Property, model.noteNameProperty], (f0, note) =>
       f0 > 0 && note ? note : EMPTY,
     );
 
     const rows: Node[][] = [
-      [label(readout.pitchStringProperty), value(pitchValue)],
-      [label(readout.noteStringProperty), value(noteValue)],
+      [label(readout.pitchStringProperty), value(pitchValueProperty)],
+      [label(readout.noteStringProperty), value(noteValueProperty)],
     ];
     const grid = new GridBox({ rows, xSpacing: 16, ySpacing: 5, xAlign: "left" });
 

@@ -5,6 +5,7 @@
  * standing-wave charts in the center, and live readouts on the right.
  */
 
+import { roundSymmetric } from "scenerystack/dot";
 import { type EmptySelfOptions, optionize } from "scenerystack/phet-core";
 import { VBox } from "scenerystack/scenery";
 import type { ScreenViewOptions } from "scenerystack/sim";
@@ -85,8 +86,8 @@ export class ComposerScreenView extends BaseAnalysisScreenView {
     // column stops short of the Reset All button horizontally, so it can run the
     // full height.
     const usableChartHeight = chartsBottom - chartsTop - 2 * interChartSpacing - 3 * CHART_BOTTOM_GUTTER;
-    const waveformHeight = Math.round(usableChartHeight * WAVEFORM_HEIGHT_FRACTION);
-    const spectrumHeight = Math.round(usableChartHeight * SPECTRUM_HEIGHT_FRACTION);
+    const waveformHeight = roundSymmetric(usableChartHeight * WAVEFORM_HEIGHT_FRACTION);
+    const spectrumHeight = roundSymmetric(usableChartHeight * SPECTRUM_HEIGHT_FRACTION);
     const standingWaveHeight = usableChartHeight - waveformHeight - spectrumHeight;
 
     const waveform = new WaveformNode(model, this.viewProperties, {
