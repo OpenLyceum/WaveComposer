@@ -81,27 +81,7 @@ function formantDecimation(sampleRate: number): number {
 
 export class VoiceAnalyzer {
   private config: AnalyzerConfig;
-  // These are populated by allocateFrameBuffers(), called from the constructor;
-  // the definite-assignment assertions tell TS that indirect init is intentional.
-  private fft!: Fft;
-  private yin!: YinPitchDetector;
-  private window!: Float32Array;
-  /** Confined-Gaussian window for the LPC branch (independent of the display window). */
-  private gaussianWindow!: Float32Array;
-
-  // Reused work + output buffers, sized to the current config.
-  private waveform!: Float32Array;
-  private windowed!: Float32Array;
-  private preEmphasized!: Float32Array;
-  private windowedPreEmphasized!: Float32Array;
-  private decimated!: Float32Array;
-  private powerScratch!: Float32Array;
-  private powerSpectrumDb!: Float32Array;
-  private lpcEnvelopeDb!: Float32Array;
-  private envReScratch!: Float32Array;
-  private envImScratch!: Float32Array;
-  private cepstrumReal!: Float32Array;
-  private cepstrumImag!: Float32Array;
+  private frameBuffers: ReturnType<VoiceAnalyzer["allocateFrameBuffers"]>;
   private lpcAutocorr: Float64Array;
   private hnrAutocorr: Float32Array;
   private hnrMaxLag: number;
@@ -113,7 +93,7 @@ export class VoiceAnalyzer {
 
   public constructor(config: AnalyzerConfig) {
     this.config = config;
-    this.allocateFrameBuffers(config.fftSize);
+    this.frameBuffers = this.allocateFrameBuffers(config);
     this.lpcAutocorr = new Float64Array(config.lpcOrder + 1);
     this.hnrMaxLag = Math.min(config.fftSize - 1, Math.ceil(config.sampleRate / config.f0MinHz));
     this.hnrAutocorr = new Float32Array(this.hnrMaxLag + 1);
@@ -128,25 +108,27 @@ export class VoiceAnalyzer {
    * windows. Called from the constructor and whenever the FFT size changes, so
    * the two paths cannot drift out of sync.
    */
-  private allocateFrameBuffers(n: number): void {
+  private allocateFrameBuffers({ fftSize: n, windowType }: AnalyzerConfig) {
     const half = n >> 1;
-    this.fft = new Fft(n);
-    this.yin = new YinPitchDetector(n);
-    this.window = createWindow(this.config.windowType, n);
-    this.gaussianWindow = createGaussianWindow(n, GAUSSIAN_ALPHA);
+    return {
+      fft: new Fft(n),
+      yin: new YinPitchDetector(n),
+      window: createWindow(windowType, n),
+      gaussianWindow: createGaussianWindow(n, GAUSSIAN_ALPHA),
 
-    this.waveform = new Float32Array(n);
-    this.windowed = new Float32Array(n);
-    this.preEmphasized = new Float32Array(n);
-    this.windowedPreEmphasized = new Float32Array(n);
-    this.decimated = new Float32Array(n);
-    this.powerScratch = new Float32Array(half);
-    this.powerSpectrumDb = new Float32Array(half);
-    this.lpcEnvelopeDb = new Float32Array(half);
-    this.envReScratch = new Float32Array(n);
-    this.envImScratch = new Float32Array(n);
-    this.cepstrumReal = new Float32Array(n);
-    this.cepstrumImag = new Float32Array(n);
+      waveform: new Float32Array(n),
+      windowed: new Float32Array(n),
+      preEmphasized: new Float32Array(n),
+      windowedPreEmphasized: new Float32Array(n),
+      decimated: new Float32Array(n),
+      powerScratch: new Float32Array(half),
+      powerSpectrumDb: new Float32Array(half),
+      lpcEnvelopeDb: new Float32Array(half),
+      envReScratch: new Float32Array(n),
+      envImScratch: new Float32Array(n),
+      cepstrumReal: new Float32Array(n),
+      cepstrumImag: new Float32Array(n),
+    };
   }
 
   /** The current configuration (read-only snapshot). */
@@ -169,10 +151,9 @@ export class VoiceAnalyzer {
 
     if (config.fftSize !== prev.fftSize) {
       // Rebuilds the FFT, YIN, windows, and every frame-size-dependent buffer.
-      this.config = config;
-      this.allocateFrameBuffers(n);
+      this.frameBuffers = this.allocateFrameBuffers(config);
     } else if (config.windowType !== prev.windowType) {
-      this.window = createWindow(config.windowType, n);
+      this.frameBuffers.window = createWindow(config.windowType, n);
     }
 
     if (config.lpcOrder !== prev.lpcOrder) {
@@ -204,10 +185,10 @@ export class VoiceAnalyzer {
     }
     const { sampleRate, lpcOrder, f0MinHz, f0MaxHz, formantMaxHz } = this.config;
 
-    this.waveform.set(frame);
+    this.frameBuffers.waveform.set(frame);
 
     // Pitch (YIN) on the raw frame.
-    const pitch = this.yin.detect(frame, {
+    const pitch = this.frameBuffers.yin.detect(frame, {
       sampleRate,
       minFrequencyHz: f0MinHz,
       maxFrequencyHz: f0MaxHz,
@@ -216,26 +197,33 @@ export class VoiceAnalyzer {
     });
 
     // Windowed frame → power spectrum (dB).
-    applyWindow(frame, this.window, this.windowed);
-    this.fft.powerSpectrum(this.windowed, this.powerScratch);
-    for (let k = 0; k < this.powerSpectrumDb.length; k++) {
-      this.powerSpectrumDb[k] = 10 * Math.log10((this.powerScratch[k] ?? 0) + 1e-12);
+    applyWindow(frame, this.frameBuffers.window, this.frameBuffers.windowed);
+    this.frameBuffers.fft.powerSpectrum(this.frameBuffers.windowed, this.frameBuffers.powerScratch);
+    for (let k = 0; k < this.frameBuffers.powerSpectrumDb.length; k++) {
+      this.frameBuffers.powerSpectrumDb[k] = 10 * Math.log10((this.frameBuffers.powerScratch[k] ?? 0) + 1e-12);
     }
 
     // Real cepstrum (from the windowed frame) → CPP.
-    this.cepstrumReal.set(this.windowed);
-    computeRealCepstrum(this.fft, this.cepstrumReal, this.cepstrumImag);
-    const cppDb = cepstralPeakProminence(this.cepstrumReal, sampleRate, f0MinHz, f0MaxHz);
+    this.frameBuffers.cepstrumReal.set(this.frameBuffers.windowed);
+    computeRealCepstrum(this.frameBuffers.fft, this.frameBuffers.cepstrumReal, this.frameBuffers.cepstrumImag);
+    const cppDb = cepstralPeakProminence(this.frameBuffers.cepstrumReal, sampleRate, f0MinHz, f0MaxHz);
 
     // Formant branch: pre-emphasis + Gaussian window → decimate to ~11 kHz →
     // autocorrelation → LPC → formants + envelope. LPC runs at the decimated rate
     // so its poles concentrate in the formant band (see FORMANT_LPC_RATE_HZ).
     const fsLpc = this.formantSampleRate;
     const decimation = this.decimator.factor;
-    preEmphasis(frame, this.preEmphasisAlpha, this.preEmphasized);
-    applyWindow(this.preEmphasized, this.gaussianWindow, this.windowedPreEmphasized);
-    const decimatedLength = this.decimator.process(this.windowedPreEmphasized, this.decimated);
-    autocorrelate(this.decimated, lpcOrder, this.lpcAutocorr, decimatedLength);
+    preEmphasis(frame, this.preEmphasisAlpha, this.frameBuffers.preEmphasized);
+    applyWindow(
+      this.frameBuffers.preEmphasized,
+      this.frameBuffers.gaussianWindow,
+      this.frameBuffers.windowedPreEmphasized,
+    );
+    const decimatedLength = this.decimator.process(
+      this.frameBuffers.windowedPreEmphasized,
+      this.frameBuffers.decimated,
+    );
+    autocorrelate(this.frameBuffers.decimated, lpcOrder, this.lpcAutocorr, decimatedLength);
     this.lpcAutocorr[0] = (this.lpcAutocorr[0] ?? 0) * (1 + LPC_REGULARIZATION);
     const lpc = levinsonDurbin(this.lpcAutocorr, lpcOrder);
     const formants = extractFormants(lpc.coefficients, {
@@ -249,12 +237,12 @@ export class VoiceAnalyzer {
     // stays on the same dB scale as the (full-rate) power spectrum it overlays.
     const envelopeGain = decimatedLength > 0 ? (lpc.gain * frame.length) / decimatedLength : lpc.gain;
     computeLpcEnvelope(
-      this.fft,
+      this.frameBuffers.fft,
       lpc.coefficients,
       envelopeGain,
-      this.envReScratch,
-      this.envImScratch,
-      this.lpcEnvelopeDb,
+      this.frameBuffers.envReScratch,
+      this.frameBuffers.envImScratch,
+      this.frameBuffers.lpcEnvelopeDb,
       decimation,
     );
 
@@ -270,10 +258,10 @@ export class VoiceAnalyzer {
       hnrDb,
       cppDb,
       rms: pitch.rms,
-      waveform: this.waveform,
-      powerSpectrumDb: this.powerSpectrumDb,
-      lpcEnvelopeDb: this.lpcEnvelopeDb,
-      cepstrum: this.cepstrumReal,
+      waveform: this.frameBuffers.waveform,
+      powerSpectrumDb: this.frameBuffers.powerSpectrumDb,
+      lpcEnvelopeDb: this.frameBuffers.lpcEnvelopeDb,
+      cepstrum: this.frameBuffers.cepstrumReal,
     };
   }
 }

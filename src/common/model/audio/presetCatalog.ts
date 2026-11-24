@@ -3,22 +3,27 @@
  *
  * Demo sources for the source ComboBox. The Analyzer screen lists
  * {@link INSTRUMENT_PRESET_CATALOG}; Voice & Vowels lists {@link VOICE_PRESET_CATALOG}.
- * The merged catalog drives {@link PresetId} typing.
+ * The two catalogs drive {@link PresetId} typing.
  */
+import type stringsEn from "../../../i18n/strings_en.json";
+
+type StringGroup = "presets" | "voicePresets";
+type GroupKey<Group extends StringGroup> = keyof (typeof stringsEn)[Group];
+type CaptionKey<Group extends StringGroup> = Extract<GroupKey<Group>, `${string}Caption`>;
+
 export type PresetCatalogEntry = {
-  readonly id: string;
-  /** Bundled filename under src/assets/audio/, or null for synthesized sources. */
-  readonly asset: string | null;
-  /** Key in strings_*.json (under `presets` or `voicePresets`). */
-  readonly nameKey: string;
-  /** Caption key in the same string group as nameKey. */
-  readonly captionKey: string;
-  /** Which localized string group supplies labels for this entry. */
-  readonly stringGroup: "presets" | "voicePresets";
-};
+  [Group in StringGroup]: {
+    readonly id: string;
+    /** Bundled filename under src/assets/audio/, or null for synthesized sources. */
+    readonly asset: string | null;
+    readonly nameKey: Exclude<GroupKey<Group>, CaptionKey<Group>>;
+    readonly captionKey: CaptionKey<Group>;
+    readonly stringGroup: Group;
+  };
+}[StringGroup];
 
 /** Analyzer screen: orchestral / percussion demos (no speech vowels). */
-export const INSTRUMENT_PRESET_CATALOG: readonly PresetCatalogEntry[] = [
+export const INSTRUMENT_PRESET_CATALOG = [
   { id: "clarinet", asset: "clarinet.ogg", nameKey: "clarinet", captionKey: "clarinetCaption", stringGroup: "presets" },
   { id: "flute", asset: "flute.ogg", nameKey: "flute", captionKey: "fluteCaption", stringGroup: "presets" },
   { id: "piccolo", asset: "piccolo.ogg", nameKey: "piccolo", captionKey: "piccoloCaption", stringGroup: "presets" },
@@ -42,10 +47,10 @@ export const INSTRUMENT_PRESET_CATALOG: readonly PresetCatalogEntry[] = [
   { id: "snare", asset: "snare.ogg", nameKey: "snare", captionKey: "snareCaption", stringGroup: "presets" },
   { id: "timpani", asset: "timpani.ogg", nameKey: "timpani", captionKey: "timpaniCaption", stringGroup: "presets" },
   { id: "cymbals", asset: "cymbals.ogg", nameKey: "cymbals", captionKey: "cymbalsCaption", stringGroup: "presets" },
-] as const;
+] as const satisfies readonly PresetCatalogEntry[];
 
 /** Voice & Vowels screen: singing, vowels, and phonetics (no instruments). */
-export const VOICE_PRESET_CATALOG: readonly PresetCatalogEntry[] = [
+export const VOICE_PRESET_CATALOG = [
   {
     id: "vowelAh",
     asset: "vowel-ah.ogg",
@@ -186,23 +191,6 @@ export const VOICE_PRESET_CATALOG: readonly PresetCatalogEntry[] = [
     captionKey: "vowelArpeggioCaption",
     stringGroup: "voicePresets",
   },
-] as const;
+] as const satisfies readonly PresetCatalogEntry[];
 
-function mergeCatalogs(
-  a: readonly PresetCatalogEntry[],
-  b: readonly PresetCatalogEntry[],
-): readonly PresetCatalogEntry[] {
-  const byId = new Map<string, PresetCatalogEntry>();
-  for (const entry of [...a, ...b]) {
-    byId.set(entry.id, entry);
-  }
-  return [...byId.values()];
-}
-
-/** Every preset id the model must instantiate (union of both screens). */
-const ALL_PRESET_CATALOG: readonly PresetCatalogEntry[] = mergeCatalogs(
-  INSTRUMENT_PRESET_CATALOG,
-  VOICE_PRESET_CATALOG,
-);
-
-export type PresetId = (typeof ALL_PRESET_CATALOG)[number]["id"];
+export type PresetId = (typeof INSTRUMENT_PRESET_CATALOG | typeof VOICE_PRESET_CATALOG)[number]["id"];

@@ -13,7 +13,6 @@ import { Tandem } from "scenerystack/tandem";
 import { StringManager } from "../../i18n/StringManager.js";
 import WaveComposerColors from "../../WaveComposerColors.js";
 import { WaveComposerConstants } from "../../WaveComposerConstants.js";
-import type { PresetCatalogEntry } from "../model/audio/presetCatalog.js";
 import { downloadBlob, encodeWav } from "../model/audio/WavEncoder.js";
 import { AudioNotice, AudioSource, type BaseAnalysisModel } from "../model/BaseAnalysisModel.js";
 
@@ -23,20 +22,6 @@ const BUTTON_MAX_TEXT_WIDTH = 180;
 interface SourceSelectorOptions {
   /** Direction the dropdown opens; use "above" when the control sits near the bottom. */
   listPosition?: "above" | "below";
-}
-
-type PresetStrings = ReturnType<StringManager["getPresetStrings"]>;
-type VoicePresetStrings = ReturnType<StringManager["getVoicePresetStrings"]>;
-
-function presetNameProperty(strings: PresetStrings | VoicePresetStrings, nameKey: string): TReadOnlyProperty<string> {
-  return strings[`${nameKey}StringProperty` as keyof typeof strings] as TReadOnlyProperty<string>;
-}
-
-function presetCaptionProperty(
-  strings: PresetStrings | VoicePresetStrings,
-  captionKey: string,
-): TReadOnlyProperty<string> {
-  return strings[`${captionKey}StringProperty` as keyof typeof strings] as TReadOnlyProperty<string>;
 }
 
 /** Builds the source ComboBox + caption + record/save buttons as a left-aligned column. */
@@ -50,15 +35,21 @@ export function createSourceSelector(
   const voiceStrings = StringManager.getInstance().getVoicePresetStrings();
   const controls = StringManager.getInstance().getControlStrings();
 
-  function stringsForEntry(entry: PresetCatalogEntry): PresetStrings | VoicePresetStrings {
-    return entry.stringGroup === "voicePresets" ? voiceStrings : instrumentStrings;
-  }
-
   const captionByPresetId = new Map(
-    catalog.map((entry) => [entry.id, presetCaptionProperty(stringsForEntry(entry), entry.captionKey)]),
+    catalog.map((entry) => [
+      entry.id,
+      entry.stringGroup === "voicePresets"
+        ? voiceStrings[`${entry.captionKey}StringProperty`]
+        : instrumentStrings[`${entry.captionKey}StringProperty`],
+    ]),
   );
   const nameByPresetId = new Map(
-    catalog.map((entry) => [entry.id, presetNameProperty(stringsForEntry(entry), entry.nameKey)]),
+    catalog.map((entry) => [
+      entry.id,
+      entry.stringGroup === "voicePresets"
+        ? voiceStrings[`${entry.nameKey}StringProperty`]
+        : instrumentStrings[`${entry.nameKey}StringProperty`],
+    ]),
   );
 
   const recordingLabelCache = new Map<string, TReadOnlyProperty<string> & { dispose(): void }>();
