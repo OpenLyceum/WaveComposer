@@ -6,22 +6,28 @@
  * corresponding query parameter in waveComposerQueryParameters.
  *
  * Shared DSP analysis settings (FFT size, LPC order, window function) used by
- * every screen's audio pipeline.
+ * every screen's audio pipeline, plus the Analyzer spectrogram colormap.
  */
 
 import { NumberProperty, Property } from "scenerystack/axon";
 import { StringIO, type Tandem } from "scenerystack/tandem";
 import { WINDOW_TYPE_VALUES, type WindowType } from "../common/model/dsp/WindowFunction.js";
 import WaveComposerNamespace from "../WaveComposerNamespace.js";
-import { FFT_SIZE_VALUES, LPC_ORDER_RANGE } from "./AnalysisConstants.js";
+import { COLORMAP_NAME_VALUES, type ColormapName, FFT_SIZE_VALUES, LPC_ORDER_RANGE } from "./AnalysisConstants.js";
 import waveComposerQueryParameters from "./waveComposerQueryParameters.js";
 
 export class WaveComposerPreferencesModel {
   public readonly fftSizeProperty: NumberProperty;
   public readonly lpcOrderProperty: NumberProperty;
+  public readonly colormapProperty: Property<ColormapName>;
   public readonly windowTypeProperty: Property<WindowType>;
 
   public constructor(tandem?: Tandem) {
+    this.colormapProperty = new Property<ColormapName>(waveComposerQueryParameters.colormap as ColormapName, {
+      phetioValueType: StringIO,
+      validValues: [...COLORMAP_NAME_VALUES],
+      ...(tandem && { tandem: tandem.createTandem("colormapProperty") }),
+    });
     this.fftSizeProperty = new NumberProperty(waveComposerQueryParameters.fftSize, {
       validValues: [...FFT_SIZE_VALUES],
       ...(tandem && { tandem: tandem.createTandem("fftSizeProperty") }),
@@ -41,6 +47,7 @@ export class WaveComposerPreferencesModel {
   }
 
   public reset(): void {
+    this.colormapProperty.reset();
     this.fftSizeProperty.reset();
     this.lpcOrderProperty.reset();
     this.windowTypeProperty.reset();

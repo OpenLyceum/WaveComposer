@@ -10,20 +10,7 @@
  * grayscale. Index a LUT with `lut[i*3 + {0,1,2}]` for the R/G/B of bin `i`.
  */
 
-export const ColormapName = {
-  VIRIDIS: "viridis",
-  INFERNO: "inferno",
-  MAGMA: "magma",
-  GRAYSCALE: "grayscale",
-} as const;
-export type ColormapName = (typeof ColormapName)[keyof typeof ColormapName];
-
-export const COLORMAP_NAME_VALUES: readonly ColormapName[] = [
-  ColormapName.VIRIDIS,
-  ColormapName.INFERNO,
-  ColormapName.MAGMA,
-  ColormapName.GRAYSCALE,
-];
+import { ColormapName } from "../../preferences/AnalysisConstants.js";
 
 type Rgb = readonly [number, number, number];
 

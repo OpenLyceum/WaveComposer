@@ -43,7 +43,7 @@ onReadyToLaunch(() => {
   const composerModel = new ComposerModel(analysisPreferences);
   const voiceModel = new VoiceModel(analysisPreferences);
 
-  const analyzerViewProperties = new AnalyzerViewProperties();
+  const analyzerViewProperties = new AnalyzerViewProperties(analysisPreferences.colormapProperty);
   const composerViewProperties = new ComposerViewProperties();
 
   const screens = [
@@ -78,8 +78,7 @@ onReadyToLaunch(() => {
         supportsInteractiveHighlights: true,
         customPreferences: [
           {
-            createContent: () =>
-              new WaveComposerPreferencesNode(analysisPreferences, analyzerViewProperties.colormapProperty),
+            createContent: () => new WaveComposerPreferencesNode(analysisPreferences),
           },
         ],
       },

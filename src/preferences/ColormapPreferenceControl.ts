@@ -9,8 +9,8 @@ import type { Node } from "scenerystack/scenery";
 import { Text } from "scenerystack/scenery";
 import { ComboBox } from "scenerystack/sun";
 import { Tandem } from "scenerystack/tandem";
-import { COLORMAP_NAME_VALUES, type ColormapName } from "../common/view/Colormaps.js";
 import { StringManager } from "../i18n/StringManager.js";
+import { COLORMAP_NAME_VALUES, type ColormapName } from "./AnalysisConstants.js";
 
 export function createColormapPreferenceControl(colormapProperty: Property<ColormapName>, listParent: Node): Node {
   const controls = StringManager.getInstance().getControlStrings();

@@ -18,7 +18,14 @@ import { logGlobal } from "scenerystack/phet-core";
 import { QueryStringMachine } from "scenerystack/query-string-machine";
 import { WINDOW_TYPE_VALUES, WindowType } from "../common/model/dsp/WindowFunction.js";
 import WaveComposerNamespace from "../WaveComposerNamespace.js";
-import { DEFAULT_FFT_SIZE, DEFAULT_LPC_ORDER, FFT_SIZE_VALUES, LPC_ORDER_RANGE } from "./AnalysisConstants.js";
+import {
+  COLORMAP_NAME_VALUES,
+  ColormapName,
+  DEFAULT_FFT_SIZE,
+  DEFAULT_LPC_ORDER,
+  FFT_SIZE_VALUES,
+  LPC_ORDER_RANGE,
+} from "./AnalysisConstants.js";
 
 const waveComposerQueryParameters = QueryStringMachine.getAll({
   /** FFT window size used by the analysis pipeline. */
@@ -35,6 +42,14 @@ const waveComposerQueryParameters = QueryStringMachine.getAll({
     defaultValue: DEFAULT_LPC_ORDER,
     isValidValue: (value: number) =>
       Number.isInteger(value) && value >= LPC_ORDER_RANGE.min && value <= LPC_ORDER_RANGE.max,
+    public: true,
+  },
+
+  /** Colormap used to display the Analyzer spectrogram. */
+  colormap: {
+    type: "string",
+    defaultValue: ColormapName.VIRIDIS,
+    validValues: [...COLORMAP_NAME_VALUES],
     public: true,
   },
 
